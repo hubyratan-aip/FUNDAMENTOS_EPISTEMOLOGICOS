@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulado Enade - História da Psicologia</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; color: #2c3e50; line-height: 1.6; padding: 20px; }
+        .container { max-width: 850px; margin: auto; background: #fff; padding: 35px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        
+        .stats-panel { display: flex; justify-content: space-between; background: #34495e; color: white; padding: 15px 25px; border-radius: 8px; margin-bottom: 30px; font-weight: bold; flex-wrap: wrap; gap: 10px; }
+        .stats-panel span { font-size: 1.1em; }
+        .acertos { color: #2ecc71; }
+        .erros { color: #e74c3c; }
+
+        .question-header { font-size: 1.3em; font-weight: bold; margin-bottom: 20px; color: #2980b9; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; }
+        .enunciado { margin-bottom: 15px; white-space: pre-wrap; font-size: 1.1em; }
+        .assercoes-box { background-color: #f8f9fa; border-left: 4px solid #3498db; padding: 15px 20px; margin-bottom: 25px; font-style: italic; border-radius: 0 5px 5px 0; }
+        
+        .options-container { margin-bottom: 25px; }
+        .option-label { display: block; background: #fff; padding: 15px; margin-bottom: 12px; border-radius: 6px; cursor: pointer; border: 2px solid #ecf0f1; transition: all 0.2s ease; }
+        .option-label:hover { border-color: #3498db; background: #f0f8ff; }
+        .option-label.correct { border-color: #2ecc71; background: #eafaf1; }
+        .option-label.incorrect { border-color: #e74c3c; background: #fceae9; }
+        input[type="radio"] { margin-right: 12px; transform: scale(1.2); }
+        
+        .nav-buttons { display: flex; gap: 15px; margin-top: 20px; }
+        .btn { background: #3498db; color: #fff; border: none; padding: 15px 25px; font-size: 1.1em; font-weight: bold; border-radius: 6px; cursor: pointer; flex: 1; transition: 0.3s; }
+        .btn:hover { background: #2980b9; }
+        .btn:disabled { background: #bdc3c7; cursor: not-allowed; }
+        .btn-secondary { background: #95a5a6; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        
+        .feedback { margin-top: 25px; padding: 20px; border-radius: 8px; display: none; font-size: 1.05em; }
+        .feedback.correct-box { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .feedback.incorrect-box { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .explanation { margin-top: 10px; font-weight: normal; line-height: 1.5; }
+
+        /* Grid de navegação rápida */
+        .question-grid { margin-top: 40px; padding-top: 20px; border-top: 2px solid #ecf0f1; display: flex; flex-wrap: wrap; gap: 8px; }
+        .grid-btn { width: 40px; height: 40px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; background: #ecf0f1; color: #7f8c8d; transition: 0.2s; }
+        .grid-btn:hover { background: #bdc3c7; color: #2c3e50; }
+        .grid-btn.answered-correct { background: #2ecc71; color: white; border: 1px solid #27ae60; }
+        .grid-btn.answered-incorrect { background: #e74c3c; color: white; border: 1px solid #c0392b; }
+        .grid-btn.current { border: 3px solid #2c3e50; transform: scale(1.1); box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; color: #2c3e50; background: #fff;}
+        
+        .reset-btn { background: #e74c3c; margin-top: 30px; width: 100%; }
+        .reset-btn:hover { background: #c0392b; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="stats-panel">
+        <span>Questão <span id="current-question-num">1</span> de <span id="total-questions">0</span></span>
+        <span class="acertos">Acertos: <span id="score-correct">0</span></span>
+        <span class="erros">Erros: <span id="score-incorrect">0</span></span>
+        <span>Aproveitamento: <span id="score-percent">0</span>%</span>
+    </div>
+
+    <div id="quiz-area">
+        <div class="question-header" id="question-title"></div>
+        <div class="enunciado" id="enunciado-text"></div>
+        <div class="assercoes-box" id="assercoes-area" style="display: none;"></div>
+        <div class="options-container" id="options-area"></div>
+        
+        <div class="nav-buttons">
+            <button class="btn btn-secondary" id="prev-btn" onclick="navegar(-1)">&#8592; Voltar</button>
+            <button class="btn" id="submit-btn" onclick="verificarResposta()">Confirmar Resposta</button>
+            <button class="btn btn-secondary" id="next-btn" onclick="navegar(1)">Avançar &#8594;</button>
+        </div>
+        
+        <div id="feedback-area" class="feedback">
+            <strong id="feedback-title"></strong>
+            <div id="feedback-explanation" class="explanation"></div>
+        </div>
+
+        <div class="question-grid" id="grid-area"></div>
+        
+        <button class="btn reset-btn" onclick="zerarSimulado()">Limpar Progresso e Recomeçar</button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // COLOQUE SEUS 6 LOTES DE JSON AQUI DENTRO
+    // ==========================================
+    const questoes = [
+    {
+    "id": 1,
+    "tipo": "assercao_razao",
+    "enunciado": "A transição da filosofia para a psicologia científica dependeu fortemente do 'Zeitgeist' (espírito do tempo) entre os séculos XVII e XIX, marcado pelo paradigma do mecanicismo. Considerando esse contexto, analise as asserções a seguir e a relação proposta entre elas:",
+    "assercoes": [
+      "I. O modelo do relógio mecânico inspirou filósofos e cientistas a conceberem o corpo humano e o universo como máquinas governadas por leis naturais previsíveis.",
+      "II. O mecanicismo fortaleceu o princípio do reducionismo, permitindo que processos complexos do comportamento fossem divididos e estudados em suas partes anatômicas fundamentais."
+    ],
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. O mecanicismo via o universo como um relógio (determinismo)[cite: 293, 302]. Essa visão exata (I) justificou o uso do reducionismo (II), que é a ideia de dividir o corpo em partes menores para compreender o todo[cite: 312, 313]."
+  },
+  {
+    "id": 2,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A medicina grega primitiva atribuía doenças a causas sobrenaturais[cite: 87]. No entanto, a partir do século VI a.C., ocorreu uma 'ruptura naturalista'[cite: 95]. Sobre as contribuições da Antiguidade para a fundação da Psicologia, analise as afirmativas abaixo:\n\nI. Alcmeão foi pioneiro ao defender, através de investigações anatômicas, que o cérebro era a sede das sensações e do pensamento.\nII. Hipócrates desenvolveu a Teoria dos Humores, propondo que os traços de personalidade derivam do predomínio de substâncias como sangue, fleuma e bile.\nIII. Galeno, na Roma Antiga, rejeitou a teoria humoral grega e propôs que os transtornos mentais eram causados exclusivamente por punições divinas.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I, apenas.",
+      "B) II e III, apenas.",
+      "C) I e II, apenas.",
+      "D) I e III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A afirmativa III é falsa porque Galeno não rejeitou a teoria humoral; pelo contrário, ele a ampliou e consolidou a integração mente-corpo através de explicações fisiológicas, não divinas[cite: 218, 232]."
+  },
+  {
+    "id": 3,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "René Descartes foi uma figura central na Revolução Científica. Sua obra redirecionou o foco dos estudos sobre a natureza humana, influenciando diretamente o surgimento da psicologia fisiológica. Qual foi a principal inovação conceitual introduzida por Descartes para o estudo do comportamento?",
+    "alternativas": [
+      "A) A formulação da 'tábula rasa', negando a existência de ideias inatas e enfatizando a experiência sensorial pura.",
+      "B) O dualismo mente-corpo e a teoria do ato reflexo, definindo o corpo como uma máquina material que reage a estímulos e interage com uma mente imaterial.",
+      "C) A teoria da 'síntese criativa', que postulava que a combinação de elementos mentais simples gerava percepções inteiramente novas.",
+      "D) A introdução do positivismo, exigindo que todos os processos mentais fossem quantificados matematicamente para terem validade científica.",
+      "E) A teoria da evolução adaptativa, sugerindo que os instintos humanos são resquícios de comportamentos animais anteriores."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. Descartes propôs o dualismo (mente e corpo como entidades separadas que interagem) e o ato reflexo (respostas mecânicas a estímulos externos), fundamentando a visão do corpo como máquina [cite: 336-341]."
+  },
+  {
+    "id": 4,
+    "tipo": "assercao_razao",
+    "enunciado": "O Empirismo Britânico foi uma corrente filosófica que estabeleceu bases metodológicas cruciais para a psicologia científica. Sobre John Locke e sua teoria do conhecimento, analise as asserções a seguir e a relação proposta entre elas:\n\nI. John Locke defendia que a mente humana, ao nascer, é como uma 'tábula rasa', desprovida de ideias inatas ou conhecimentos preexistentes.\nPORQUE\nII. Para Locke, todo o conhecimento válido e os conteúdos da mente derivam exclusivamente da reflexão metafísica e da dedução lógica pura, independentes do mundo externo.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A asserção I é verdadeira[cite: 325]. A asserção II é falsa porque, para Locke, o conhecimento deriva da EXPERIÊNCIA SENSORIAL com o mundo externo (empirismo)[cite: 327], e não da dedução lógica independente (que seria racionalismo)."
+  },
+  {
+    "id": 5,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "O desenvolvimento de técnicas de pesquisa no século XIX permitiu que o cérebro e o sistema nervoso fossem mapeados de forma mais rigorosa[cite: 499]. Analise os métodos fisiológicos descritos abaixo e suas respectivas definições:\n\nI. Extirpação: Método clínico que consiste no exame post-mortem do cérebro para relacionar lesões a déficits comportamentais em vida.\nII. Estímulos Elétricos: Aplicação de pequenas correntes no córtex cerebral de animais vivos para observar respostas motoras específicas.\nIII. Frenologia: Prática baseada na premissa de que o formato do crânio (saliências e depressões) revelava as capacidades intelectuais e características emocionais do indivíduo.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A afirmativa I está errada porque descreve o 'Método Clínico'[cite: 504]. A extirpação envolve remover ou destruir partes do cérebro em animais vivos para observar a perda de função[cite: 503]."
+  },
+  {
+    "id": 6,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "A psicofísica foi o campo de transição definitivo entre a fisiologia e a psicologia experimental, quantificando a experiência subjetiva. Nesse contexto, Gustav Theodor Fechner alcançou um marco histórico em 1860 ao publicar 'Elements of Psychophysics'[cite: 795]. Qual foi a principal contribuição dessa obra?",
+    "alternativas": [
+      "A) A formulação matemática exata que descreve a relação funcional entre a intensidade de um estímulo físico e a magnitude da sensação mental correspondente.",
+      "B) A descoberta de que o impulso nervoso viaja a uma velocidade de aproximadamente 27 metros por segundo, desmentindo a instantaneidade do pensamento.",
+      "C) A comprovação de que o cérebro não possui áreas especializadas, operando como uma massa homogênea na interpretação de estímulos.",
+      "D) A fundamentação do Associacionismo Mecanicista, que reduzia a formação de ideias complexas a meras uniões de reflexos condicionados.",
+      "E) O isolamento da 'Área de Broca', comprovando a localização fisiológica da articulação da linguagem."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. Fechner é o pai da psicofísica por ter estabelecido a relação matemática (quantitativa) entre os estímulos do mundo físico e as percepções do mundo mental[cite: 795, 817]."
+  },
+  {
+    "id": 7,
+    "tipo": "assercao_razao",
+    "enunciado": "Auguste Comte foi uma figura central para estabelecer os critérios do que poderia ser considerado ciência no século XIX. Analise as asserções abaixo a respeito da sua visão epistemológica:\n\nI. O Positivismo de Comte representou um obstáculo metodológico para o surgimento da psicologia laboratorial.\nPORQUE\nII. Comte defendia que a ciência deveria focar exclusivamente em fatos observáveis e mensuráveis, rejeitando completamente as explicações baseadas em abstrações metafísicas.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. A asserção I é falsa, pois o Positivismo não foi um obstáculo, mas sim a BASE que impulsionou o modelo rigoroso dos primeiros laboratórios[cite: 365]. A asserção II é verdadeira, descrevendo corretamente o núcleo do Positivismo[cite: 356]."
+  },
+  {
+    "id": 8,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A medição da condução neural alterou irreversivelmente a compreensão sobre a relação corpo e mente. Hermann von Helmholtz foi o responsável por essa ruptura paradigmática[cite: 560]. Com base nas descobertas de Helmholtz, avalie as proposições a seguir:\n\nI. Ao medir a velocidade do impulso nervoso, Helmholtz comprovou que o pensamento e o movimento muscular ocorrem de forma rigorosamente simultânea.\nII. Seus experimentos reforçaram a visão mecanicista, demonstrando que os processos mentais são fisiológicos, gastam tempo e não são instâncias imateriais instantâneas.\nIII. Helmholtz contribuiu para a ciência da percepção ao propor que estímulos físicos interagem de forma ativa e complexa com a interpretação do cérebro, especialmente na visão e audição.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A proposição I é falsa. O grande feito de Helmholtz foi justamente provar que pensamento e movimento NÃO ocorrem simultaneamente, pois o sinal elétrico tem uma velocidade mensurável que gasta tempo[cite: 565, 566]."
+  },
+  {
+    "id": 9,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "James Mill e John Stuart Mill representam duas gerações do Associacionismo, mas com perspectivas profundamente distintas sobre o funcionamento da mente. Enquanto James Mill defendia o associacionismo mecanicista, seu filho propôs o conceito de 'Síntese Criativa'[cite: 400, 401]. O que define a Síntese Criativa de John Stuart Mill?",
+    "alternativas": [
+      "A) A noção de que as ideias simples se unem de forma puramente aditiva, sendo a ideia complexa exatamente igual à soma de suas partes constituintes.",
+      "B) O conceito de que a mente é estritamente passiva, recebendo associações do ambiente sem nenhuma capacidade de organização interna.",
+      "C) A ideia de que as ideias se combinam como em uma reação química, gerando propriedades ou ideias novas que não existiam nas partes originais isoladas.",
+      "D) A rejeição total do empirismo de Locke, sugerindo que a síntese de ideias ocorre apenas por meio de capacidades inatas do sistema nervoso.",
+      "E) O foco exclusivo nos aspectos fisiológicos da associação neural, ignorando o papel dos estímulos ambientais externos."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. John Stuart Mill, contrastando com o modelo mecanicista de seu pai, propôs que a combinação de ideias cria uma novidade qualitativa, assim como elementos químicos formam compostos inteiramente novos[cite: 401]."
+  },
+  {
+    "id": 10,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "Ernst Weber foi um pioneiro no estudo das sensações táteis[cite: 618]. Suas investigações geraram métricas que fundamentaram toda a psicologia experimental subsequente. Dentre as suas formulações, destacam-se o 'limiar de dois pontos' e a 'lei da diferença mínima perceptível'[cite: 622, 647]. Sobre os conceitos propostos por Weber, é correto afirmar que:\n\nI. O limiar de dois pontos refere-se à menor distância necessária entre dois estímulos táteis simultâneos para que o indivíduo perceba duas sensações distintas em vez de uma.\nII. A diferença mínima perceptível demonstra que a percepção humana das variações em estímulos sensoriais é sempre qualitativa e impossível de ser medida numericamente.\nIII. O trabalho de Weber evidenciou que não há correspondência direta e exata de um para um entre o estímulo físico e a nossa percepção subjetiva dele.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) I e III, apenas.",
+      "C) II e III, apenas.",
+      "D) I, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A afirmativa II é falsa porque o trabalho de Weber foi exatamente o oposto: ele quantificou (mediu numericamente e de forma objetiva) como percebemos variações nos estímulos físicos[cite: 649]."
+  },
+  {
+    "id": 11,
+    "tipo": "assercao_razao",
+    "enunciado": "Para compreender o surgimento das teorias que fundamentaram a psicologia, é essencial analisar o 'Zeitgeist' (espírito do tempo) da época. Sobre esse conceito e sua aplicação na história da ciência, avalie as asserções a seguir:\n\nI. O Zeitgeist define o contexto intelectual e cultural que permite ou impede o surgimento de certas teorias em determinado momento histórico.\nPORQUE\nII. Os avanços científicos dependem exclusivamente da genialidade isolada de indivíduos brilhantes, sendo imunes às condições sociais, políticas e crenças da época.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A asserção I é verdadeira [cite: 52-54, 60-64]. A asserção II é falsa porque o conceito de Zeitgeist demonstra justamente o oposto: os avanços científicos dependem do ambiente cultural e não apenas de indivíduos geniais[cite: 65]."
+  },
+  {
+    "id": 12,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "A filosofia antiga marcou a transição das explicações mitológicas para as racionais. Nesse cenário, Hipócrates propôs uma teoria que influenciou a compreensão do comportamento por séculos. Qual era o núcleo da teoria hipocrática sobre a personalidade?",
+    "alternativas": [
+      "A) A personalidade é formada por três partes da alma: racional, irascível e apetitiva, que vivem em constante conflito.",
+      "B) O comportamento humano é moldado exclusivamente pelas ideias inatas que a mente adquire antes do nascimento.",
+      "C) Os traços de personalidade são explicados pelo predomínio de um dos quatro humores corporais: sangue, fleuma, bile amarela e bile negra.",
+      "D) A mente atua como uma tábula rasa, e as emoções se formam apenas por associação mecânica de ideias ao longo da vida.",
+      "E) A personalidade é definida pelo formato do crânio do indivíduo, cujas saliências indicam traços como a melancolia."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. Hipócrates desenvolveu a Teoria dos Humores, onde o predomínio de sangue, fleuma, bile amarela ou bile negra explicaria os traços de personalidade e o temperamento do indivíduo [cite: 119-122]."
+  },
+  {
+    "id": 13,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A 'Ruptura Naturalista' na Grécia Antiga foi o marco essencial para o futuro científico da psicologia. Médicos passaram a rejeitar causas sobrenaturais para as doenças. Com base nesse período, analise as afirmativas:\n\nI. Alcmeão foi o primeiro a defender que o cérebro é a sede das sensações e do pensamento, baseando-se em investigações anatômicas.\nII. Aristóteles, através do método da extirpação, mapeou as funções motoras no cérebro de animais vivos.\nIII. Sócrates defendia o método dialético e a introspecção, postulando que o autoconhecimento era essencial para compreender o comportamento humano.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) I e III, apenas.",
+      "C) II e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A afirmativa I está correta [cite: 103-105]. A afirmativa III está correta [cite: 157-161]. A afirmativa II é falsa porque a extirpação é um método fisiológico do século XIX[cite: 503], e não de Aristóteles."
+  },
+  {
+    "id": 14,
+    "tipo": "assercao_razao",
+    "enunciado": "O mecanicismo dos séculos XVII a XIX transformou a forma como o universo era compreendido, adotando o relógio como metáfora central. Avalie as asserções a respeito dessa visão de mundo:\n\nI. O princípio do determinismo, intrínseco ao mecanicismo, sustenta que todo evento possui uma causa identificável que o produz, não havendo espaço para o acaso.\nPORQUE\nII. O universo opera de maneira mecânica e previsível, permitindo que os fenômenos sejam compreendidos por princípios físicos e matemáticos, dispensando explicações metafísicas.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. Ambas as asserções são corretas. O universo mecânico e explicável pelas leis físicas (II) [cite: 290-295] é exatamente o que justifica a crença no determinismo (I), onde nada acontece ao acaso e tudo tem uma causa identificável [cite: 296-298]."
+  },
+  {
+    "id": 15,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "Galeno, médico da Roma Antiga, realizou contribuições que dominaram a ciência por mais de mil anos. Qual foi o seu principal avanço em relação à compreensão da mente humana?",
+    "alternativas": [
+      "A) Criou o conceito de introspecção estruturada, substituindo a medicina pela filosofia dialética.",
+      "B) Rejeitou completamente a teoria humoral, afirmando que o sangue não possuía relação com o comportamento.",
+      "C) Ampliou a teoria humoral, estudou o cérebro e propôs que lesões físicas causavam alterações comportamentais, consolidando a integração mente-corpo.",
+      "D) Foi o criador da Frenologia, mapeando o formato do crânio dos gladiadores romanos.",
+      "E) Desenvolveu o conceito de 'síntese criativa', onde o cérebro forma emoções de forma abstrata e imaterial."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. Galeno ampliou a teoria humoral e consolidou a integração mente-corpo ao propor relações diretas entre lesões cerebrais e alterações no comportamento [cite: 216-224]."
+  },
+  {
+    "id": 16,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "John Stuart Mill propôs uma visão sobre a mente que contrastava fortemente com o associacionismo mecanicista de seu pai, James Mill. Analise as características abaixo e identifique as que correspondem à teoria de John Stuart Mill:\n\nI. A mente atua passivamente, sendo apenas um receptáculo onde ideias se somam como tijolos em uma parede.\nII. As ideias podem se combinar gerando algo novo, diferente da simples soma das partes, em um processo conhecido como 'Síntese Criativa'.\nIII. O conhecimento só pode ser derivado de ideias inatas presentes no sistema nervoso desde o nascimento.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I, apenas.",
+      "B) II, apenas.",
+      "C) III, apenas.",
+      "D) I e II, apenas.",
+      "E) II e III, apenas."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. Apenas a II é correta. John Stuart Mill defendia a 'Síntese Criativa', onde a junção de ideias cria propriedades novas [cite: 401-402]. A I descreve o modelo mecanicista de James Mill [cite: 399-400], e a III descreve o racionalismo inatista, oposto ao empirismo de ambos."
+  },
+  {
+    "id": 17,
+    "tipo": "assercao_razao",
+    "enunciado": "A universidade alemã do século XIX ofereceu o ambiente ideal para o florescimento da psicologia experimental. Sobre esse contexto acadêmico, avalie as asserções:\n\nI. A Alemanha foi pioneira na psicologia laboratorial devido ao rigor metodológico que isolava completamente a fisiologia das influências da filosofia.\nPORQUE\nII. O sistema acadêmico alemão conferia grande liberdade aos professores para escolherem seus temas e montarem laboratórios bem equipados, integrando filosofia e ciências naturais.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. A asserção I é falsa porque a Alemanha não isolou a fisiologia da filosofia; pelo contrário, o ambiente acadêmico integrou essas áreas de forma única [cite: 539-544]. A asserção II é verdadeira e descreve corretamente as condições da academia alemã[cite: 545]."
+  },
+  {
+    "id": 18,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "Os filósofos gregos foram fundamentais por tratar a mente como objeto legítimo de reflexão. Qual pensador antigo postulou que a alma possui três partes (racional, irascível e apetitiva) e que o comportamento resulta do conflito entre elas?",
+    "alternativas": [
+      "A) Sócrates",
+      "B) Hipócrates",
+      "C) Platão",
+      "D) Aristóteles",
+      "E) Alcmeão"
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. Platão postulou que a alma possui partes racional, irascível e apetitiva, e que o conflito interno entre elas explica as decisões e ações humanas [cite: 172-178]."
+  },
+  {
+    "id": 19,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "Ao final do século XVIII, estudos tentaram explicar a atividade neural através da eletricidade. Analise as afirmativas históricas a seguir:\n\nI. René Descartes propôs a teoria das vibrações para explicar a condução neural.\nII. Luigi Galvani realizou experimentos demonstrando que estímulos elétricos podiam provocar contrações musculares em rãs.\nIII. Demonstrações públicas de Giovanni Aldini com eletricidade em corpos inspiraram obras culturais da época, como o romance Frankenstein.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) II, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A I é falsa porque a teoria dos tubos foi de Descartes, enquanto a teoria das vibrações foi de David Hartley [cite: 518-519]. A II está correta (experimentos de Galvani)[cite: 520]. A III está correta (demonstrações de Aldini) [cite: 521-522]."
+  },
+  {
+    "id": 20,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "Na transição para a fisiologia moderna (1830-1840), Johannes Müller transformou a disciplina voltando-a para os experimentos. Qual foi sua teoria principal que moldou o entendimento fisiológico das sensações?",
+    "alternativas": [
+      "A) A Lei da Diferença Mínima Perceptível.",
+      "B) O Método de Extirpação Hemisférica.",
+      "C) A Teoria da Tábula Rasa Fisiológica.",
+      "D) A Teoria sobre a energia específica dos nervos.",
+      "E) O Dualismo Epistemológico."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. Johannes Müller propôs a teoria da energia específica dos nervos, afirmando que o estímulo de um nervo específico provoca uma sensação específica [cite: 489-490]."
+  },
+  {
+    "id": 21,
+    "tipo": "assercao_razao",
+    "enunciado": "A psicofísica dividiu o estudo das sensações em esferas interna e externa para facilitar a compreensão experimental. Sobre esse campo fundado por Fechner, avalie as asserções:\n\nI. A psicofísica externa investiga a relação quantitativa entre os estímulos físicos ambientais e a magnitude das sensações que eles provocam no indivíduo.\nPORQUE\nII. A psicofísica interna dedica-se a examinar como os processos fisiológicos (neurais) influenciam diretamente os estados mentais experimentados.\n",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. Ambas as asserções estão corretas conceitualmente: a psicofísica externa relaciona estímulo ao ambiente e a interna relaciona processo fisiológico à mente [cite: 751-753]. Contudo, a II não é a justificativa ou causa da I; ambas são subdivisões complementares da mesma ciência."
+  },
+  {
+    "id": 22,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "As descobertas de Hermann von Helmholtz abrangeram mais do que apenas a velocidade do impulso nervoso. Sobre suas contribuições para a nova psicologia, é correto afirmar:\n\nI. Ele defendeu que a percepção visual é passiva, atuando o olho como uma simples lente fotográfica que envia cópias imutáveis da realidade ao cérebro.\nII. Ele propôs que estímulos físicos não são meras recepções passivas, mas dependem da interpretação ativa e dinâmica do cérebro na visão e audição.\nIII. Helmholtz estabeleceu que a audição envolve a interpretação e organização de sons, permitindo a identificação de diferentes fontes sonoras.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A afirmativa I é falsa. Helmholtz propôs justamente que a percepção visual e auditiva é um processo ATIVO, onde o cérebro interpreta as informações, formando nossa experiência [cite: 607-612]."
+  },
+  {
+    "id": 23,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "A obra 'De Anima', fundamental na história do pensamento, é considerada um dos primeiros tratados intelectuais que tentou organizar as funções mentais de forma sistemática. Quem foi o seu autor e o que ele defendia sobre a associação de ideias?",
+    "alternativas": [
+      "A) Sócrates; afirmava que as ideias são inatas e acessadas pela maiêutica.",
+      "B) Platão; postulava que as ideias puras pertencem ao mundo inteligível e não se associam na alma.",
+      "C) Descartes; defendia que a mente associa ideias mecanicamente através dos fluidos animais nos nervos.",
+      "D) Aristóteles; afirmou que as ideias se associam pela semelhança, contraste e contiguidade.",
+      "E) John Locke; propôs que a tábula rasa associa percepções apenas por contiguidade no tempo."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. Aristóteles escreveu 'De Anima' e afirmou que as ideias se associam através de três leis fundamentais: semelhança, contraste e contiguidade [cite: 192-206]."
+  },
+  {
+    "id": 24,
+    "tipo": "assercao_razao",
+    "enunciado": "A frenologia foi um movimento altamente popular e controverso no século XIX. Avalie as asserções sobre essa teoria:\n\nI. A frenologia, idealizada por Franz Josef Gall, deduzia características intelectuais e emocionais a partir do mapeamento de saliências e afundamentos no crânio humano.\nPORQUE\nII. Seus idealizadores acreditavam ter descoberto o 'centro da fala' no córtex esquerdo após a realização de rigorosas autópsias em indivíduos com afasia.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A asserção I é verdadeira ao descrever o postulado da Frenologia [cite: 513-516]. A asserção II é falsa, pois a descoberta do 'centro da fala' (área de Broca) no hemisfério esquerdo por autópsia foi feita pelo método clínico de Paul Broca, não pela frenologia [cite: 507-511]."
+  },
+  {
+    "id": 25,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "Ernst Weber, pesquisador pioneiro da fisiologia do tato, introduziu métricas precisas para a psicologia nascente. O conceito de 'limiar de dois pontos' refere-se a:",
+    "alternativas": [
+      "A) A intensidade mínima de som necessária para que dois observadores diferentes ouçam a mesma frequência.",
+      "B) A menor diferença de peso detectável por um indivíduo ao segurar objetos em ambas as mãos.",
+      "C) A distância mínima necessária entre dois estímulos táteis aplicados simultaneamente na pele para que sejam distinguidos como dois pontos e não apenas um.",
+      "D) O tempo de reação fisiológica necessário entre a aplicação de um estímulo e a tomada de decisão consciente do indivíduo.",
+      "E) A diferença matemática que comprova a superioridade quantitativa da sensibilidade tátil em relação à percepção visual."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. O limiar de dois pontos é definido como a menor distância necessária para distinguir dois estímulos táteis aplicados na pele [cite: 622-623]."
+  },
+  {
+    "id": 26,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "O reducionismo e o materialismo foram subprodutos essenciais da revolução científica para a neurociência moderna. Sobre o Materialismo do século XIX, analise as proposições:\n\nI. Defendia que a mente imaterial comanda as ações físicas através de glândulas específicas localizadas na base do cérebro.\nII. Rejeitava o dualismo cartesiano, afirmando que não há separação entre substância mental e física.\nIII. Postulava que os processos mentais não são nada além de resultados diretos da atividade física e material do sistema nervoso.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. O materialismo defende que só existe matéria, que a mente é produto do cérebro (III) e rejeita ativamente a separação imposta pelo dualismo (II) [cite: 373-377]. A afirmativa I descreve o resquício do dualismo interacionista de Descartes."
+  },
+  {
+    "id": 27,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "O termo 'Empirismo', derivado da concepção de que o conhecimento se origina nos sentidos, teve em John Locke um de seus maiores teóricos. Qual conceito central da filosofia de Locke foi essencial para as teorias modernas de aprendizagem?",
+    "alternativas": [
+      "A) O mentalismo perceptivo, que afirmava que 'ser é ser percebido'.",
+      "B) O reducionismo matemático, que fragmentava a experiência humana em equações lógicas.",
+      "C) O inatismo cognitivo, argumentando que princípios morais nascem com a criança e moldam a experiência.",
+      "D) A teoria da associação, onde o conhecimento resulta da ligação entre ideias simples para formar ideias complexas.",
+      "E) A doutrina do determinismo absoluto, negando qualquer grau de livre escolha na combinação de memórias sensoriais."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. Além da 'tábula rasa', a grande contribuição de Locke para as teorias de aprendizagem foi a Teoria da Associação: o conhecimento resulta da ligação entre ideias simples para formar ideias complexas [cite: 386-388]."
+  },
+  {
+    "id": 28,
+    "tipo": "assercao_razao",
+    "enunciado": "O teólogo e filósofo George Berkeley expandiu o empirismo em uma direção peculiar, desenvolvendo o que ficou conhecido como Mentalismo Perceptivo. Avalie as asserções abaixo:\n\nI. George Berkeley defendeu que toda a realidade existente depende fundamentalmente da percepção.\nPORQUE\nII. Ele sintetizou essa crença na máxima 'ser é ser percebido', negando a existência de matéria física independente da mente que a observa.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. Ambas as afirmativas são verdadeiras e se complementam intimamente. A máxima 'ser é ser percebido' (II) é a explicação teórica (justificativa) do porquê Berkeley argumenta que a realidade material depende da percepção humana ou divina (I) [cite: 397-398]."
+  },
+  {
+    "id": 29,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A psicofísica introduziu o uso intensivo de instrumentação para a avaliação sensorial. Identifique a associação correta entre os pesquisadores do século XIX e seus métodos instrumentais e métricos:\n\nI. Ernst Weber: Formulou a Lei da Diferença Mínima Perceptível (JND), medindo diferenças qualitativas em pesos e texturas.\nII. Hermann von Helmholtz: Utilizou cronômetros primitivos e miógrafos para quantificar a velocidade dos impulsos em nervos de rãs.\nIII. Paul Broca: Desenvolveu o galvanômetro de reflexos motores, aplicando choques em crânios humanos vivos para induzir a fala.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I, apenas.",
+      "B) II, apenas.",
+      "C) I e II, apenas.",
+      "D) II e III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A I é correta (Weber e JND) [cite: 647-650]. A II é correta (Helmholtz, impulso nervoso) [cite: 559-566]. A III é falsa, Broca não aplicava choques em vivos; ele utilizava o método clínico post-mortem (autópsia) [cite: 507-511]."
+  },
+  {
+    "id": 30,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "Um dos primeiros passos da fisiologia para mapear o cérebro animal foi o método da extirpação. Qual é o princípio fundamental dessa técnica fisiológica?",
+    "alternativas": [
+      "A) Realizar autópsias detalhadas após o óbito natural do animal para localizar tumores ou infecções cerebrais.",
+      "B) Aplicar pequenas correntes elétricas no córtex para curar patologias motoras reversíveis.",
+      "C) Remover ou destruir sistematicamente áreas específicas do cérebro de um animal vivo e observar quais funções comportamentais são perdidas.",
+      "D) Medir as saliências do crânio de diferentes espécies animais para comparar suas capacidades cognitivas inatas.",
+      "E) Conectar terminações nervosas decepadas a um galvanômetro para registrar o potencial elétrico do pensamento."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A extirpação envolve a técnica de remover ou destruir uma parte do cérebro do animal vivo para observar as mudanças ou perdas subsequentes no seu comportamento[cite: 503]."
+  },
+  {
+    "id": 31,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "Aristóteles, em sua obra 'De Anima', não apenas mapeou as funções vitais, mas também estabeleceu os princípios fundamentais da memória e da aprendizagem que ecoam até as teorias modernas. Segundo esse filósofo, a mente humana organiza e evoca as ideias baseando-se em três leis fundamentais de associação. Quais são elas?",
+    "alternativas": [
+      "A) Razão, emoção e instinto.",
+      "B) Causa, efeito e temporalidade.",
+      "C) Semelhança, contraste e contiguidade.",
+      "D) Repetição, intensidade e reflexo condicionado.",
+      "E) Dedução, indução e introspecção."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. Aristóteles afirmou que as ideias se associam pela semelhança, contraste e contiguidade, conceitos que influenciaram fortemente as teorias modernas da aprendizagem[cite: 206]."
+  },
+  {
+    "id": 32,
+    "tipo": "assercao_razao",
+    "enunciado": "A teoria do ato reflexo de René Descartes foi um marco na virada mecanicista da ciência. Sobre o impacto dessa teoria na compreensão do comportamento, analise as asserções:\n\nI. Descartes postulou que objetos externos podem provocar no corpo respostas mecânicas e involuntárias, que ocorrem sem a participação do pensamento ou da vontade.\nPORQUE\nII. Segundo o dualismo cartesiano, o corpo opera como uma máquina governada pelas leis da física, enquanto a mente imaterial interage com ele sem ser o motor exclusivo de todas as ações corporais.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. A afirmação I define o ato reflexo[cite: 321, 338, 339]. Essa ação autônoma e mecânica do corpo é plenamente justificada pela afirmação II, que define a premissa de que o corpo é uma máquina que obedece às leis da física, independentemente da mente imaterial."
+  },
+  {
+    "id": 33,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "No século XIX, o desenvolvimento de novos métodos de exploração do sistema nervoso consolidou a fisiologia como ciência de base para a psicologia. Considere os três métodos abaixo:\n\n1. Extirpação\n2. Método Clínico\n3. Estímulos Elétricos\n\nAgora, analise as seguintes descrições:\n( ) Exame post-mortem de estruturas cerebrais para identificar áreas lesionadas responsáveis por alterações comportamentais em vida.\n( ) Destruição ou remoção de partes do cérebro de um animal vivo para observar os déficits funcionais e comportamentais resultantes.\n( ) Aplicação de pequenas correntes no córtex cerebral para observar respostas motoras específicas.\n\nA sequência correta que relaciona os métodos às suas descrições é:",
+    "alternativas": [
+      "A) 1, 2, 3.",
+      "B) 2, 1, 3.",
+      "C) 2, 3, 1.",
+      "D) 3, 1, 2.",
+      "E) 1, 3, 2."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. O Método Clínico (2) examina lesões após a morte[cite: 504]. A Extirpação (1) remove partes do cérebro de animais[cite: 503]. Os Estímulos Elétricos (3) aplicam correntes para observar resposta motora[cite: 505]."
+  },
+  {
+    "id": 34,
+    "tipo": "assercao_razao",
+    "enunciado": "A publicação de 'Elements of Psychophysics' (1860) por Gustav Fechner é frequentemente considerada o marco inicial da fundação da psicologia experimental. Analise as asserções abaixo a respeito do trabalho de Fechner:\n\nI. Fechner consolidou a psicofísica ao propor que mente e corpo pertencem a um mesmo sistema funcional, e que a experiência subjetiva pode ser medida com rigor científico.\nPORQUE\nII. Ele desenvolveu o conceito de psicofísica interna, que se dedicava exclusivamente a mapear as saliências e depressões cranianas para quantificar emoções matemáticas.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A asserção I é verdadeira [cite: 790-792, 795]. A asserção II é falsa, pois o mapeamento de saliências cranianas era o foco da Frenologia [cite: 513-516], prática que nada tem a ver com o rigor quantitativo e os estudos funcionais (estímulo-sensação) da psicofísica de Fechner [cite: 700-702, 751-753]."
+  },
+  {
+    "id": 35,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A Lei da Diferença Mínima Perceptível (JND) proposta por Ernst Weber revolucionou a forma como as sensações eram estudadas no século XIX. Sobre essa lei, é correto afirmar:\n\nI. Ela estabelece que a percepção humana de diferenças entre dois estímulos é relativa à intensidade do estímulo original, e não a um valor absoluto.\nII. Foi fundamental para a psicofísica porque provou quantitativamente que nossa percepção consciente não é um espelho exato e perfeitamente simétrico do mundo físico.\nIII. Ela demonstrou que a velocidade do impulso nervoso variava dependendo de qual órgão dos sentidos estava sendo testado.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I, apenas.",
+      "B) I e II, apenas.",
+      "C) II e III, apenas.",
+      "D) I e III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A afirmativa I e II descrevem os fundamentos das medições de Weber (a menor diferença detectável) [cite: 647-650]. A afirmativa III é falsa, pois quem tratou da medição do impulso nervoso foi Helmholtz, não Weber [cite: 559-566]."
+  },
+  {
+    "id": 36,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "O advento de certas tecnologias e instrumentos na Era Moderna alterou profundamente o paradigma científico. No contexto do mecanicismo, qual objeto tecnológico foi a grande metáfora para explicar a previsibilidade e a regularidade do universo e do corpo humano?",
+    "alternativas": [
+      "A) A prensa de tipos móveis.",
+      "B) O telescópio astronômico.",
+      "C) A máquina a vapor.",
+      "D) O relógio mecânico.",
+      "E) O barômetro de mercúrio."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. O relógio foi o modelo principal. O mecanicismo considerava que o mundo era um sistema ordenado, preciso e regulado por leis fixas, funcionando exatamente como um relógio[cite: 292, 293, 301, 302]."
+  },
+  {
+    "id": 37,
+    "tipo": "assercao_razao",
+    "enunciado": "A doutrina empirista defendida por John Locke estabeleceu uma crítica frontal às teorias racionalistas de seu tempo. Sobre o papel da mente no empirismo, avalie as asserções:\n\nI. Locke argumentou veementemente contra a existência de ideias inatas, asseverando que a mente nasce como uma 'tábula rasa'.\nPORQUE\nII. Segundo ele, todo o conteúdo da mente e o conhecimento humano se originam e são construídos a partir das experiências sensoriais que o indivíduo acumula ao longo da vida.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. Ambas as asserções estão corretas e se complementam. A mente é considerada uma folha em branco (tábula rasa) (I) justamente porque todo o conhecimento precisa derivar, obrigatoriamente, da experiência sensorial do indivíduo (II) [cite: 324, 381-385]."
+  },
+  {
+    "id": 38,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "George Berkeley propôs o 'Mentalismo Perceptivo', uma vertente radical do pensamento empírico. A essência do seu pensamento estava resumida na ideia de que 'ser é ser percebido'. O que Berkeley queria afirmar com esse conceito na história da psicologia?",
+    "alternativas": [
+      "A) Que a percepção é uma faculdade inata presente apenas nos seres humanos racionais.",
+      "B) Que a matéria física não existe independentemente da mente que a observa e a percebe.",
+      "C) Que a alma tripartida deve entrar em harmonia para que a percepção seja validada clinicamente.",
+      "D) Que a mente é uma máquina associativa que combina sensações passadas sem criar nada novo.",
+      "E) Que apenas eventos perfeitamente quantificáveis pela física mecânica são reais e percebíveis."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. Berkeley defendia que a realidade depende intrinsecamente da percepção; portanto, a existência do mundo está condicionada ao ato de ser percebido por uma mente[cite: 397, 398]."
+  },
+  {
+    "id": 39,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A descoberta de Hermann von Helmholtz sobre a velocidade do impulso nervoso derrubou crenças milenares na ciência. Avalie as consequências teóricas de seu experimento:\n\nI. Helmholtz provou que as reações corporais obedecem a princípios metafísicos instantâneos que escapam às leis da física.\nII. Ao medir o tempo de condução no nervo, ele demonstrou que o pensamento e a resposta motora não ocorrem simultaneamente.\nIII. Essa mensuração foi o pilar para que a psicologia começasse a tratar os processos mentais como fenômenos fisiológicos, limitados pelo tempo e espaço.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A afirmativa I é falsa porque Helmholtz fez exatamente o oposto: ele desmistificou a instantaneidade (metafísica) ao provar que o impulso tem uma velocidade mensurável, separando temporalmente o pensamento do movimento (II) e fixando os processos mentais como eventos fisiológicos reais (III) [cite: 559-566]."
+  },
+  {
+    "id": 40,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "A Teoria dos Humores de Hipócrates foi um dos primeiros esforços para categorizar traços de personalidade e estados patológicos a partir de causas fisiológicas. Qual é a associação correta entre um humor e o temperamento ou característica de personalidade que ele supostamente causava, de acordo com essa teoria?",
+    "alternativas": [
+      "A) Fleuma - Pessoas intensas, instáveis e impulsivas.",
+      "B) Sangue - Pessoas calmas, lentas e apáticas.",
+      "C) Bile Negra - Pessoas propensas à tristeza profunda e quadros depressivos (melancolia).",
+      "D) Bile Amarela - Pessoas vivas, otimistas e altamente sociáveis.",
+      "E) Sangue - Pessoas introspectivas e persistentemente agressivas."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. Na teoria hipocrática expandida posteriormente, a bile negra era associada ao temperamento melancólico (tristeza persistente e pessimismo) [cite: 138-140]."
+  },
+  {
+    "id": 41,
+    "tipo": "assercao_razao",
+    "enunciado": "O Positivismo, fundado por Auguste Comte, ditou as regras do que deveria ser aceito como conhecimento válido. A respeito de suas bases metodológicas, analise as asserções:\n\nI. Comte defendia que a psicologia, para ser uma ciência legítima, precisaria rejeitar as investigações baseadas puramente na introspecção e na metafísica.\nPORQUE\nII. No Positivismo, apenas o conhecimento fundamentado na observação objetiva, nos fatos mensuráveis e na experimentação possui validade científica.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. Comte rejeitava a metafísica e exigia o modelo científico para a psicologia (I) [cite: 359-360] precisamente porque o seu Positivismo declarava que apenas fatos observáveis e mensuráveis eram válidos cientificamente (II) [cite: 356, 361-364]."
+  },
+  {
+    "id": 42,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A fundação da psicologia experimental ocorreu primordialmente na Alemanha do século XIX. Qual fator histórico e acadêmico foi crucial para que esse país se tornasse o berço da nova ciência psicológica?",
+    "alternativas": [
+      "A) A proibição governamental de pesquisas biológicas, que obrigou os cientistas a migrarem para os departamentos de filosofia teórica.",
+      "B) A liberdade acadêmica dos professores alemães, que podiam definir seus temas de pesquisa e possuíam laboratórios bem equipados que integravam filosofia e ciência.",
+      "C) A ausência do pensamento mecanicista nas universidades de Berlim, permitindo estudos místicos mais aprofundados sobre a mente humana.",
+      "D) A imposição da igreja luterana, que exigia que todo comportamento humano fosse estudado unicamente pela exegese bíblica.",
+      "E) O isolamento geográfico da Alemanha, que a protegeu da influência dos pensadores empiristas ingleses como John Locke."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. O ambiente acadêmico alemão era único, oferecendo integração entre filosofia e ciências naturais, além de liberdade para os professores organizarem laboratórios bem equipados [cite: 539-545]."
+  },
+  {
+    "id": 43,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A Frenologia, idealizada por Franz Josef Gall, foi uma tentativa inicial e equivocada de mapear as funções cerebrais. No entanto, ela reflete uma busca genuína do século XIX. Sobre os pressupostos da Frenologia, considere as afirmativas:\n\nI. Postulava que era possível identificar talentos e traços de personalidade medindo as saliências e depressões do crânio.\nII. Afirmava que o cérebro operava como uma unidade indivisível, onde qualquer parte poderia assumir a função de outra parte danificada.\nIII. Refletia a necessidade científica da época de localizar fisicamente as faculdades mentais, antecipando, em intenção, a neurociência moderna.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) I e III, apenas.",
+      "C) II e III, apenas.",
+      "D) I, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A I e a III estão corretas. Gall inferia características a partir do formato do crânio [cite: 513-516], o que era uma tentativa inicial de localização cerebral. A II é falsa, pois a Frenologia acreditava na extrema especialização das áreas, e não em uma massa indivisível."
+  },
+  {
+    "id": 44,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "De acordo com Platão, as dificuldades morais e os conflitos comportamentais do ser humano poderiam ser explicados pela estrutura da sua alma. Para ele, a alma era dotada de uma dimensão que deveria controlar as demais. Que dimensão é essa?",
+    "alternativas": [
+      "A) A dimensão irascível, que nos dá a força para combater os desejos impulsivos.",
+      "B) A dimensão apetitiva, que garante a nossa sobrevivência biológica.",
+      "C) A dimensão racional, que apreende as ideias universais e deve guiar e controlar a irascível e a apetitiva.",
+      "D) A dimensão empírica, que se preenche gradualmente conforme interagimos com o ambiente físico.",
+      "E) A dimensão divina, oriunda da energia específica dos nervos descrita pelos deuses gregos."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. Platão enfatizava a centralidade da razão, afirmando que a parte racional da alma deveria atuar no controle das demais partes (irascível e apetitiva) para mitigar o conflito interno [cite: 173-176, 181-183]."
+  },
+  {
+    "id": 45,
+    "tipo": "assercao_razao",
+    "enunciado": "O avanço das ciências da natureza no século XIX consolidou uma perspectiva conhecida como Materialismo. Avalie as asserções em relação à posição do Materialismo frente às ideias cartesianas clássicas:\n\nI. O materialismo propôs a rejeição absoluta do dualismo cartesiano, negando a separação entre uma substância mental imaterial e uma substância física.\nPORQUE\nII. Na visão materialista, só existe a matéria, e todos os processos mentais e estados de consciência são produtos diretos da atividade física do sistema nervoso e do cérebro.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. O materialismo defende que os processos mentais resultam apenas da atividade física do cérebro (II)[cite: 375]. Essa exclusividade materialista é exatamente o que justifica a rejeição completa do dualismo (I)[cite: 376], que aceitava a existência de uma substância imaterial."
+  },
+  {
+    "id": 46,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "A fisiologia do final do século XVIII até o século XIX valeu-se de procedimentos que beiravam a ficção científica para a época. Qual método demonstrou publicamente, com impacto até na literatura, que impulsos físicos (e não fluidos mágicos) geravam as contrações musculares do corpo?",
+    "alternativas": [
+      "A) O método clínico post-mortem em pacientes afásicos.",
+      "B) A extirpação sistemática dos hemisférios cerebrais em aves.",
+      "C) Os experimentos com estímulos elétricos aplicados em corpos decapitados e membros de animais por Galvani e Aldini.",
+      "D) A medição do limiar de dois pontos de Weber utilizando compassos modificados.",
+      "E) A introdução das fórmulas logarítmicas psicofísicas desenvolvidas por Gustav Fechner."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. Os estímulos elétricos que induziram contrações foram explorados publicamente por Luigi Galvani e Giovanni Aldini, inspirando inclusive Mary Shelley a escrever 'Frankenstein' [cite: 520-522]."
+  },
+  {
+    "id": 47,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "Johannes Müller foi essencial para a sistematização fisiológica na década de 1830. A sua 'Teoria das Energias Específicas dos Nervos' representou um salto epistemológico. Essa teoria sugeria que:",
+    "alternativas": [
+      "A) Todo o sistema nervoso opera com um único tipo de energia que, dependendo da área do cérebro atingida, se transforma em visão ou audição.",
+      "B) A intensidade de uma sensação mental aumenta em progressão aritmética à medida que o estímulo físico aumenta em progressão geométrica.",
+      "C) A estimulação de um nervo específico sempre levará a uma sensação específica, independentemente de como esse nervo foi estimulado.",
+      "D) O cérebro humano está dividido em compartimentos cranianos que definem habilidades natas, ativados por energia mística.",
+      "E) O conhecimento do mundo externo não pode ser alcançado, pois a energia dos nervos distorce irremediavelmente os fatos reais."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A teoria de Müller postulava que o estímulo de um nervo específico provoca invariavelmente uma sensação específica (por exemplo, estimular o nervo óptico, seja com luz ou com pressão, gerará uma percepção visual) [cite: 489-490]."
+  },
+  {
+    "id": 48,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A herança médica na psicologia não proveio apenas de métodos cirúrgicos, mas da observação sistemática de padrões entre a saúde do corpo e a da mente. Galeno consolidou esse elo na Antiguidade Romana. Avalie as sentenças relativas ao seu trabalho:\n\nI. Galeno rejeitou os ensinamentos de Hipócrates, afirmando que a personalidade dependia unicamente da intervenção dos deuses e não dos fluidos corporais.\nII. Ele propôs relações diretas entre lesões físicas ou cerebrais e alterações subsequentes no comportamento do indivíduo.\nIII. Sua explicação fisiológica para o comportamento humano permaneceu influente por séculos, embasando as futuras teorias psicopatológicas.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A afirmativa I é falsa porque Galeno não rejeitou Hipócrates; pelo contrário, ele AMPLIOU a teoria humoral[cite: 218]. As afirmativas II e III são corretas, descrevendo sua observação de lesões e a durabilidade de seu legado [cite: 219, 222, 223, 231-234]."
+  },
+  {
+    "id": 49,
+    "tipo": "assercao_razao",
+    "enunciado": "O conceito de 'Síntese Criativa' foi a resposta teórica de John Stuart Mill à rigidez do associacionismo de seu pai. Analise as asserções a seguir que explicam esse embate:\n\nI. John Stuart Mill defendeu que a mente age sobre os elementos mentais combinando-os de forma a produzir algo qualitativamente novo, semelhante às reações na química.\nPORQUE\nII. Ele desejava refutar o associacionismo mecanicista de James Mill, que tratava a mente de forma passiva, como uma máquina que apenas justapõe e empilha elementos de forma previsível.",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. Ambas são verdadeiras. A síntese criativa (I) é a metáfora química proposta por John Stuart Mill [cite: 401-402] precisamente como contraponto crítico (justificativa) ao associacionismo passivo e mecanicista de James Mill (II) [cite: 399-400]."
+  },
+  {
+    "id": 50,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "A 'Ruptura Naturalista' foi o passo inaugural que separou as explicações baseadas em deuses e rituais do estudo racional da saúde humana. Alcmeão de Crotona protagonizou um dos primeiros e mais decisivos saltos anatômicos desse período. O que Alcmeão defendeu de forma pioneira?",
+    "alternativas": [
+      "A) Que as doenças eram punições impostas pelo culto de Asclépio.",
+      "B) Que a fleuma e a bile negra controlavam exclusivamente o temperamento infantil.",
+      "C) Que o cérebro, e não outro órgão como o coração, era a sede central das sensações e do pensamento.",
+      "D) Que a circulação sanguínea obedecia ao princípio do mecanismo de tubos a vácuo.",
+      "E) Que as perturbações psicológicas podiam ser curadas exclusivamente pelo transe dialético socrático."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. Na Grécia antiga, através da investigação do corpo, Alcmeão foi o primeiro a relacionar os órgãos sensoriais ao sistema nervoso, defendendo que o cérebro era a sede anatômica das sensações e do pensamento [cite: 104-105]."
+  },
+  {
+    "id": 51,
+    "tipo": "assercao_razao",
+    "enunciado": "O mecanicismo adotou o relógio como a principal metáfora para explicar o mundo natural [cite: 301-302]. Analise as asserções a respeito do impacto dessa tecnologia no pensamento científico:\n\nI. O desenvolvimento dos relógios e de outros instrumentos de medição consolidou a crença de que o mundo é um sistema ordenado, preciso e regulado por leis fixas [cite: 301-304].\nPORQUE\nII. Esses instrumentos permitiram transformar qualidades abstratas (como tempo, calor e pressão) em dados quantificáveis, possibilitando a observação controlada e sistemática dos fenômenos [cite: 303-305].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. Ambas são verdadeiras e se justificam. A metáfora do relógio (I) ganhou força cientificamente porque a tecnologia de medição da época provou que era possível quantificar a natureza e estudá-la de forma matemática e precisa (II) [cite: 301-305]."
+  },
+  {
+    "id": 52,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A teoria epistemológica de John Locke é um dos pilares do empirismo moderno. Avalie as seguintes proposições sobre a visão de Locke a respeito do desenvolvimento da mente:\n\nI. Locke concordava com Descartes sobre a existência de ideias inatas, mas argumentava que elas só eram ativadas pelas experiências sensoriais [cite: 343-345, 384-385].\nII. O ser humano nasce como uma 'tábula rasa' (folha em branco), desprovido de qualquer conhecimento prévio [cite: 324, 384-385].\nIII. O conhecimento complexo é resultado da 'teoria da associação', onde ideias simples se ligam ou se associam para formar ideias complexas [cite: 386-388].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A afirmativa I é falsa porque Locke rejeitou veementemente a existência de ideias inatas, fundando o empirismo na premissa da mente como folha em branco (II) e na associação de ideias simples adquiridas pela experiência (III) [cite: 381-388]."
+  },
+  {
+    "id": 53,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "Auguste Comte foi uma figura decisiva na legitimação das ciências no século XIX. Em seu esforço para organizar o conhecimento válido, ele propôs a 'Hierarquia das Ciências'. Qual era o princípio organizador dessa hierarquia para Comte?",
+    "alternativas": [
+      "A) As ciências deveriam ser organizadas da mais empírica à mais metafísica, culminando na teologia [cite: 354-360].",
+      "B) As ciências foram organizadas por ordem de utilidade econômica para a Revolução Industrial [cite: 357-358].",
+      "C) As ciências deveriam ser estruturadas com base na introspecção individual de cada pesquisador [cite: 359-360].",
+      "D) A organização se dava em uma ordem de complexidade crescente, da matemática à sociologia, todas devendo seguir o mesmo método científico [cite: 357-358].",
+      "E) O princípio organizador baseava-se unicamente nas leis do mecanicismo, excluindo o estudo da sociedade [cite: 357-360]."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. Comte organizou as ciências em uma hierarquia de complexidade crescente, iniciando na matemática e culminando na sociologia, defendendo que todas as disciplinas deveriam adotar o mesmo método científico observável [cite: 357-358]."
+  },
+  {
+    "id": 54,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "Hermann von Helmholtz não apenas mediu a velocidade do impulso nervoso, mas também fez descobertas cruciais sobre a visão e a audição [cite: 605-607, 609]. Sobre suas conclusões a respeito desses sentidos, analise:\n\nI. Helmholtz propôs que a percepção visual é um processo ativo no qual o cérebro interpreta informações recebidas dos olhos [cite: 607-608].\nII. Na audição, ele argumentou que o processamento e a organização dos sons ocorrem de forma passiva e mecânica, sem interpretação ativa do cérebro [cite: 609-610].\nIII. Seus estudos demonstraram que há uma interação complexa entre o corpo físico e a mente subjetiva, influenciando nossas experiências perceptivas [cite: 611-612].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I, apenas.",
+      "B) I e II, apenas.",
+      "C) I e III, apenas.",
+      "D) II e III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A afirmativa II é falsa porque Helmholtz defendeu que tanto a visão quanto a audição são processos ativos de interpretação pelo cérebro, rejeitando a ideia de mera recepção passiva [cite: 607-610]."
+  },
+  {
+    "id": 55,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "O pesquisador Ernst Weber desenvolveu testes quantitativos essenciais para o nascimento da psicologia experimental [cite: 616-618]. Em seus estudos sobre a percepção tátil, ele definiu o 'limiar de dois pontos' [cite: 622-623]. Esse conceito procurava medir a:",
+    "alternativas": [
+      "A) Diferença de temperatura entre dois objetos que a pele consegue perceber simultaneamente [cite: 622-625].",
+      "B) Menor distância necessária para que um indivíduo perceba dois estímulos táteis como sensações distintas [cite: 622-623].",
+      "C) Intensidade mínima de dor necessária para que ocorra o arco reflexo involuntário [cite: 622-625].",
+      "D) Relação logarítmica entre estímulos visuais e a percepção de profundidade de campo [cite: 622-625].",
+      "E) Velocidade com que o impulso nervoso tátil viaja da pele até a medula espinhal [cite: 622-625]."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. O limiar de dois pontos, formulado por Weber, é definido como a menor distância necessária entre dois pontos de estimulação na pele para que a pessoa os distinga como dois estímulos isolados [cite: 622-623]."
+  },
+  {
+    "id": 56,
+    "tipo": "assercao_razao",
+    "enunciado": "A psicofísica foi dividida por Gustav Fechner em duas esferas principais de investigação[cite: 751]. Com base na estruturação dessa disciplina, avalie as asserções:\n\nI. A psicofísica interna dedica-se a investigar como processos estritamente fisiológicos e neurológicos influenciam e se relacionam com os estados mentais vivenciados [cite: 751-752].\nPORQUE\nII. Fechner buscava estabelecer que a interação corpo e mente não dependia de fatores ambientais (físicos), focando o laboratório unicamente no mapeamento das sinapses cerebrais [cite: 751-753].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A asserção I é verdadeira [cite: 751-752]. A asserção II é falsa porque a psicofísica (especialmente a externa) se preocupava sim com os fatores ambientais (estímulos físicos), estudando a relação funcional de todo o sistema corpo e mente [cite: 751-753, 790-792]."
+  },
+  {
+    "id": 57,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "René Descartes classificou o conteúdo da mente propondo a 'Doutrina das Ideias'[cite: 343]. Segundo essa teoria, o pensamento humano seria composto por dois tipos principais de ideias [cite: 344-345]. Avalie as definições a seguir:\n\nI. Ideias Derivadas: São produzidas pela ação direta de estímulos físicos provenientes do ambiente externo sobre os nossos sentidos[cite: 344].\nII. Ideias Inatas: Surgem independentemente das experiências sensoriais, emanando da própria mente ou consciência do indivíduo [cite: 344-345].\nIII. Ideias Associativas: Surgem da combinação química de reflexos condicionados gerados pela glândula pineal [cite: 343-345].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) I, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. As descrições das ideias inatas e derivadas estão corretas de acordo com a Doutrina das Ideias de Descartes [cite: 343-345]. A afirmativa III é inventada e não faz parte da doutrina cartesiana."
+  },
+  {
+    "id": 58,
+    "tipo": "assercao_razao",
+    "enunciado": "A descoberta de Paul Broca foi um marco decisivo para a neurociência e a psicologia nascente [cite: 506-511]. Sobre seu método de investigação, avalie as proposições:\n\nI. Paul Broca utilizou o método clínico para correlacionar distúrbios da fala em um paciente com danos em estruturas cerebrais específicas [cite: 507-511].\nPORQUE\nII. O método clínico baseava-se em examinar cirurgicamente o paciente ainda em vida, removendo partes do córtex esquerdo para testar a recuperação da linguagem falada [cite: 502-504].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A asserção I é verdadeira [cite: 507-511]. A asserção II é falsa porque o método clínico consiste no exame pós-morte (autópsia) para localizar as lesões [cite: 504], não em remoção cirúrgica in vivo (que seria extirpação)[cite: 503]."
+  },
+  {
+    "id": 59,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "No contexto da Revolução Científica e do Mecanicismo, a compreensão metodológica sofreu profundas mudanças. O conceito de 'Reducionismo' tornou-se uma ferramenta explicativa essencial[cite: 311]. O que o reducionismo defende sobre o conhecimento?",
+    "alternativas": [
+      "A) Que a verdade só pode ser alcançada por meio de revelações místicas ou dogmas teológicos absolutos [cite: 311-314].",
+      "B) Que as emoções humanas devem ser ignoradas em laboratório por não serem quantificáveis matematicamente [cite: 311-314].",
+      "C) Que para compreender um fenômeno complexo, deve-se dividi-lo em suas partes constituintes e estudar cada parte separadamente (método analítico) [cite: 312-314].",
+      "D) Que todo evento no universo possui uma causa determinante, sendo impossível o livre arbítrio verdadeiro [cite: 311-314].",
+      "E) Que a percepção humana reduz as qualidades da matéria às suas intenções metafísicas originais [cite: 311-314]."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. O reducionismo é a premissa metodológica de que podemos compreender fenômenos complexos ao dividi-los e estudar as suas partes mais simples, usando o método analítico [cite: 311-314]."
+  },
+  {
+    "id": 60,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "O Positivismo exerceu uma forte pressão sobre os padrões intelectuais no século XIX, forçando disciplinas a adaptarem suas abordagens[cite: 361]. De acordo com os fundamentos defendidos por Auguste Comte, analise as afirmativas:\n\nI. O Positivismo defendia o estudo exclusivo dos fenômenos observáveis e mensuráveis cientificamente [cite: 356, 362-364].\nII. Comte promoveu a rejeição severa das abordagens e explicações metafísicas que permeavam a filosofia[cite: 360, 363].\nIII. Para o Positivismo, a psicologia deveria se voltar ao estudo da alma de forma abstrata para ganhar o status de ciência maior na 'Hierarquia das Ciências' [cite: 357-360].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) I, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. As afirmativas I e II definem os princípios do Positivismo corretamente [cite: 356, 362-364]. A afirmativa III é falsa porque Comte exigia exatamente o oposto: rejeitar explicações metafísicas ou abstratas sobre a 'alma', exigindo observação objetiva para validar a psicologia [cite: 359-360]."
+  },
+  {
+    "id": 61,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "As raízes gregas da psicologia estabeleceram a mente como objeto de reflexão legítimo [cite: 149-151]. Sócrates, em especial, desenvolveu um método que inspiraria práticas psicológicas milênios mais tarde. Qual foi a principal contribuição de Sócrates para a análise do comportamento humano?",
+    "alternativas": [
+      "A) A criação do laboratório de psicofísica experimental em Atenas [cite: 157-161].",
+      "B) O desenvolvimento da teoria dos quatro humores para classificar transtornos mentais [cite: 157-161].",
+      "C) A defesa de que o autoconhecimento, obtido através da introspecção e do método dialético, era essencial para entender o comportamento [cite: 158-161].",
+      "D) A postulação formal do empirismo radical, negando o pensamento racional inato [cite: 157-161].",
+      "E) O isolamento anatômico do cérebro como a sede verdadeira das sensações [cite: 157-161]."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. Sócrates destacou-se pela defesa da introspecção e do autoconhecimento, utilizando o seu método dialético para investigar o comportamento humano [cite: 158-161]."
+  },
+  {
+    "id": 62,
+    "tipo": "assercao_razao",
+    "enunciado": "O Determinismo e o Mecanicismo estão profundamente entrelaçados nas raízes da ciência moderna [cite: 290-291, 306-307]. Avalie as asserções e sua relação:\n\nI. Segundo a ótica mecanicista, os fenômenos do universo operam como uma máquina, logo, não há espaço para eventos aleatórios ou desordenados na natureza [cite: 292-293, 308-309].\nPORQUE\nII. O determinismo científico estabeleceu a premissa de que todo e qualquer evento possui uma causa identificável que o produziu [cite: 296-297, 308].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. As asserções estão corretas e ligadas. A visão mecanicista nega a aleatoriedade (I) precisamente porque o determinismo garante que tudo tem uma causa física rastreável (II) [cite: 296-298, 306-310]."
+  },
+  {
+    "id": 63,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A Frenologia representou uma fase peculiar nas investigações sobre as funções cerebrais no século XIX [cite: 513-514]. Avalie as afirmativas que descrevem as bases teóricas desse movimento:\n\nI. Foi criada por Franz Josef Gall[cite: 513].\nII. Propunha que as habilidades intelectuais e emocionais poderiam ser analisadas através do formato e das saliências do crânio [cite: 513-516].\nIII. Foi o primeiro movimento a comprovar microscopicamente a divisão funcional dos neurônios cerebrais [cite: 513-516].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. A I e a II definem corretamente a Frenologia de Franz Josef Gall [cite: 513-516]. A III é falsa, pois a Frenologia se baseava no mapeamento externo do crânio e não utilizava comprovações microscópicas de neurônios."
+  },
+  {
+    "id": 64,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "O Empirismo provocou uma revolução nas bases do conhecimento científico, em oposição ao pensamento escolástico medieval[cite: 334]. Um dos pilares do empirismo era a 'rejeição de dogmas'[cite: 331]. Na prática, isso significava que o conhecimento científico deveria:",
+    "alternativas": [
+      "A) Romper com a autoridade de textos antigos e da tradição, exigindo que a verdade fosse verificada pela experiência concreta no mundo [cite: 331-333].",
+      "B) Eliminar os laboratórios físicos em favor da reflexão puramente lógica e matemática proposta pela religião [cite: 331-333].",
+      "C) Aceitar como verdadeiro apenas o que pudesse ser deduzido por filósofos com status universitário superior [cite: 331-333].",
+      "D) Sustentar a teoria do dualismo interacionista de Descartes como um axioma científico inquestionável [cite: 331-333].",
+      "E) Adotar a teoria da Síntese Criativa como paradigma para a fundação das ciências sociais [cite: 331-333]."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. A rejeição de dogmas no empirismo exigia que as verdades científicas rompessem com as tradições impostas e passassem a ser verificadas rigorosamente pela experiência e observação [cite: 331-333]."
+  },
+  {
+    "id": 65,
+    "tipo": "assercao_razao",
+    "enunciado": "Hermann von Helmholtz estabeleceu um dos marcos inaugurais da psicologia ao quantificar um processo biológico[cite: 559]. Avalie as asserções a respeito do seu mais famoso experimento:\n\nI. Helmholtz descobriu, mensurando matematicamente, que o pensamento e a resposta fisiológica aos estímulos não ocorrem de maneira instantânea e mágica [cite: 559-566].\nPORQUE\nII. Ele demonstrou que o cérebro humano está isolado da atividade neurológica, não possuindo condução nervosa aferente ou eferente [cite: 559-566].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A asserção I é verdadeira, descrevendo o feito e a conclusão (fim da instantaneidade do pensamento) de Helmholtz [cite: 559-566]. A asserção II é falsa e absurda fisiologicamente, visto que o cérebro é o centro do processamento da condução nervosa."
+  },
+  {
+    "id": 66,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A institucionalização da psicologia científica na Alemanha oitocentista deve muito ao modelo universitário do país. Sobre a organização acadêmica alemã daquele período, analise:\n\nI. Os professores universitários gozavam de grande liberdade acadêmica para definir seus currículos e disciplinas de pesquisa[cite: 545].\nII. Houve uma forte integração entre os conhecimentos da filosofia clássica e as inovações das ciências naturais empíricas [cite: 542-544].\nIII. A Alemanha exigia, por decreto imperial, que as pesquisas neurocientíficas fossem realizadas apenas por clérigos [cite: 541-546].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) I, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. As afirmativas I e II refletem o cenário fértil das universidades alemãs, marcado pela liberdade dos professores em montar seus laboratórios e pela integração interdisciplinar entre filosofia e ciência [cite: 541-545]. A III não tem base histórica nem consta nos slides."
+  },
+  {
+    "id": 67,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "O grupo de médicos associados a Hipócrates mudou o paradigma da compreensão das perturbações humanas na antiguidade [cite: 111-112]. Qual foi o principal avanço promovido por esse grupo em relação aos antigos sacerdotes de Asclépio?",
+    "alternativas": [
+      "A) Aprovaram o tratamento de transtornos psíquicos exclusivamente através de rituais nos templos [cite: 111-113].",
+      "B) Adotaram as explicações anatômicas microscópicas do córtex motor [cite: 111-113].",
+      "C) Afirmaram que as doenças eram causadas por influências de espíritos malignos da natureza [cite: 111-113].",
+      "D) Introduziram a observação clínica, atribuindo as doenças a causas naturais e desequilíbrios corporais [cite: 112-113].",
+      "E) Restringiram o estudo da mente às interpretações do 'espírito do tempo' dos faraós egípcios [cite: 111-113]."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. Os médicos ligados a Hipócrates racionalizaram a medicina ao introduzir a observação clínica detalhada e propor que as doenças resultavam de desequilíbrios físicos corporais, e não de deuses ou espíritos [cite: 111-113]."
+  },
+  {
+    "id": 68,
+    "tipo": "assercao_razao",
+    "enunciado": "A 'Teoria do Ato Reflexo' desenvolvida por Descartes abriu precedentes para investigar respostas fisiológicas humanas e animais[cite: 338]. Avalie as asserções sobre essa teoria:\n\nI. O ato reflexo implica que certos estímulos ambientais resultam em reações automáticas e involuntárias do organismo [cite: 338-339].\nPORQUE\nII. Nesse processo fisiológico mecânico, não há necessidade do envolvimento ou da mediação do pensamento consciente [cite: 338-339].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. Ambas as asserções estão corretas e interligadas. A reação é descrita como mecânica e involuntária (I) exatamente devido à ausência de processamento cognitivo ou pensamento envolvido na geração daquela resposta motora (II) [cite: 338-339]."
+  },
+  {
+    "id": 69,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A primeira metade do século XIX viu a fisiologia consolidar-se como a plataforma primária de onde a psicologia surgiria. A respeito dos avanços capitaneados por cientistas como Johannes Müller entre 1830 e 1840 [cite: 488-489], analise as proposições:\n\nI. A disciplina de fisiologia voltou-se agressivamente para a realização de experimentos de laboratório[cite: 489].\nII. Os cientistas começaram a mapear o cérebro com a intenção de localizar funções sensoriais e identificar onde os dados dos sentidos ficavam depositados [cite: 491-492].\nIII. Estabeleceu-se o consenso de que todo comportamento era derivado de ideias inatas plantadas diretamente na glândula pineal no momento do nascimento [cite: 489-493].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. As proposições I e II descrevem os focos práticos e os objetivos de mapeamento cerebral da fisiologia dessa era, influenciada por Johannes Müller [cite: 489-492]. A proposição III é errada, misturando ideias inatas com a glândula pineal (abordagem filosófica cartesiana superada pelo viés experimental fisiológico dessa época)."
+  },
+  {
+    "id": 70,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "As formulações de Ernst Weber, especificamente a Lei da Diferença Mínima Perceptível (JND), foram absorvidas e ampliadas matematicamente na fundação da psicofísica. Qual pensador deu o próximo grande passo ao publicar um tratado em 1860 conectando de vez esses dados ao estudo da mente?",
+    "alternativas": [
+      "A) Wilhelm Wundt, com o estabelecimento do primeiro laboratório de psicologia.",
+      "B) Hermann von Helmholtz, publicando seus tratados sobre acústica e ressonância.",
+      "C) Paul Broca, após apresentar as conclusões de suas autópsias à sociedade de medicina francesa.",
+      "D) Gustav Theodor Fechner, publicando a obra 'Elements of Psychophysics'.",
+      "E) Auguste Comte, publicando sua doutrina do positivismo lógico universal."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. Gustav Fechner pegou as medições sensoriais baseadas no trabalho de Weber e publicou 'Elements of Psychophysics' em 1860, unindo a física e a percepção na disciplina da psicofísica [cite: 794-795]."
+  },
+  {
+    "id": 71,
+    "tipo": "assercao_razao",
+    "enunciado": "A formulação do dualismo por René Descartes modificou a trajetória da ciência no século XVII. Avalie as asserções a respeito dessa teoria e suas consequências:\n\nI. Descartes introduziu a ideia de que o corpo opera como uma máquina governada por leis físicas, capaz de responder a estímulos externos através do 'ato reflexo' [cite: 338-342].\nPORQUE\nII. Segundo ele, não existe qualquer separação entre mente e corpo, sendo a mente apenas um subproduto material do funcionamento do coração [cite: 335-337].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A asserção I é verdadeira ao descrever o corpo como máquina e o ato reflexo [cite: 338-342]. A asserção II é falsa porque o cerne do dualismo cartesiano é justamente a SEPARAÇÃO entre a mente (entidade imaterial) e o corpo (entidade material) [cite: 336-337]."
+  },
+  {
+    "id": 72,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "John Locke consolidou o Empirismo Britânico baseando-se na rejeição de certos conceitos filosóficos anteriores. Sobre as premissas defendidas por Locke, analise as afirmativas:\n\nI. A mente humana nasce como uma 'tábula rasa' (folha em branco) [cite: 384-385].\nII. As ideias inatas são a principal fonte de conhecimento abstrato e matemático [cite: 381-385].\nIII. O conhecimento é construído através da experiência sensorial, e as ideias simples se associam para formar ideias complexas [cite: 386-388].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) I e III, apenas.",
+      "C) II e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. Locke defendia a tábula rasa (I) e a formação do conhecimento via experiência sensorial e associação (III) [cite: 381-388]. A afirmativa II é falsa porque Locke REJEITAVA a existência de ideias inatas [cite: 384-385]."
+  },
+  {
+    "id": 73,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "O avanço das ciências da natureza no século XIX dependia de inovações métricas e metodológicas. Qual cientista foi responsável por quantificar a velocidade do impulso nervoso, provando que ele gasta tempo e não é instantâneo?",
+    "alternativas": [
+      "A) Luigi Galvani [cite: 520-522].",
+      "B) Paul Broca [cite: 506-511].",
+      "C) Hermann von Helmholtz [cite: 559-566].",
+      "D) Auguste Comte [cite: 354-360].",
+      "E) Ernst Weber [cite: 616-621]."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. Hermann von Helmholtz fez a descoberta fundamental da velocidade mensurável dos impulsos nervosos, estabelecendo que pensamento e movimento não são simultâneos [cite: 559-566]."
+  },
+  {
+    "id": 74,
+    "tipo": "assercao_razao",
+    "enunciado": "Auguste Comte procurou estabelecer um método rigoroso para as ciências, fundando o Positivismo [cite: 354-356]. Avalie as asserções:\n\nI. Para Comte, a psicologia baseada na introspecção não poderia ser considerada uma ciência válida [cite: 359-360].\nPORQUE\nII. O positivismo defende que apenas o conhecimento construído a partir de fatos observáveis e verificáveis objetivamente possui validade [cite: 356, 361-364].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. A asserção I é verdadeira e é justificada pela II. Comte rejeitava a introspecção (subjetiva e não observável por terceiros) porque o positivismo exigia que a ciência se apoiasse exclusivamente em dados observáveis e objetivos [cite: 356, 359-364]."
+  },
+  {
+    "id": 75,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A transição da fisiologia especulativa para a fisiologia cerebral exata dependeu da precisão de métodos como o de Paul Broca [cite: 506-511]. Sobre a descoberta clínica de Broca, avalie as afirmativas:\n\nI. Ele utilizou o método clínico, que consistia na autópsia do cérebro para identificar lesões responsáveis por alterações comportamentais prévias [cite: 503-504, 507-511].\nII. A 'Área de Broca' foi identificada como o centro cerebral responsável pela audição [cite: 508-511].\nIII. A lesão identificada por ele estava localizada na 3ª convolução frontal do hemisfério esquerdo[cite: 508].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A afirmativa I (método clínico) e III (localização exata) estão corretas [cite: 503-504, 507-511]. A afirmativa II é falsa porque a Área de Broca foi identificada como o centro da FALA, não da audição [cite: 509-511]."
+  },
+  {
+    "id": 76,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "Gustav Fechner buscou estabelecer uma ciência exata que relacionasse as dimensões física e mental [cite: 694-696]. O nome dado por ele a esse novo campo de estudo, que divide-se em externo e interno, foi:",
+    "alternativas": [
+      "A) Frenologia [cite: 513-516].",
+      "B) Fisiologia Específica [cite: 489-490].",
+      "C) Associacionismo [cite: 399-402].",
+      "D) Psicofísica [cite: 699-702].",
+      "E) Materialismo Científico [cite: 373-377]."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. A ciência que estuda as relações entre estímulos físicos e sensações mentais, estabelecida por Fechner em 1860, é a Psicofísica [cite: 699-702, 794-795]."
+  },
+  {
+    "id": 77,
+    "tipo": "assercao_razao",
+    "enunciado": "O conceito de 'Just Noticeable Difference' (JND), ou Diferença Mínima Perceptível, formulado por Ernst Weber, foi um dos pilares da fundação da psicologia quantitativa [cite: 647-650]. Avalie as asserções:\n\nI. A lei da diferença mínima perceptível comprovou que a percepção humana funciona de forma puramente subjetiva e impossível de ser traduzida em equações [cite: 647-650].\nPORQUE\nII. Weber utilizava testes como o 'limiar de dois pontos' para demonstrar a ausência de conexão entre o físico e o mental [cite: 622-625].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 4,
+    "explicacao": "Correta: E. Ambas são falsas. Weber PROVOU que é possível medir a percepção quantitativamente (I) e o 'limiar de dois pontos' foi criado exatamente para medir e demonstrar essa conexão entre a estimulação física tátil e a percepção mental (II) [cite: 622-625, 647-650]."
+  },
+  {
+    "id": 78,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A Antiguidade Clássica foi essencial para o desenvolvimento de teorias rudimentares sobre o comportamento humano. Hipócrates desenvolveu a Teoria dos Humores [cite: 119-122]. Sobre as correlações propostas por essa teoria, analise:\n\nI. Temperamento Sanguíneo: Pessoa viva, ativa, energética e otimista [cite: 128-130].\nII. Temperamento Fleumático: Pessoa calma, estável e introspectiva [cite: 131-135].\nIII. Temperamento Colérico: Pessoa triste, pessimista e tendente à depressão [cite: 136-140].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. A I e a II descrevem corretamente os temperamentos sanguíneo e fleumático [cite: 128-135]. A afirmativa III é falsa porque a descrição de tristeza e pessimismo corresponde ao temperamento Melancólico (bile negra), não ao Colérico (bile amarela), que é irritável e agressivo [cite: 136-140]."
+  },
+  {
+    "id": 79,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "A psicologia e a filosofia ocidentais herdam muito do pensamento de Platão [cite: 172-178]. Qual era o cerne de sua teoria para explicar as atitudes humanas?",
+    "alternativas": [
+      "A) O comportamento é moldado exclusivamente pela imitação dos deuses do Olimpo [cite: 172-178].",
+      "B) As atitudes derivam do conflito interno entre as partes racional, irascível e apetitiva da alma [cite: 172-178].",
+      "C) As emoções humanas dependem unicamente da proporção de bile negra no fígado [cite: 172-178].",
+      "D) A razão é ilusória, e o ser humano age exclusivamente por reflexos condicionados mecânicos [cite: 172-178].",
+      "E) O autoconhecimento só pode ser alcançado através de estímulos elétricos no sistema nervoso [cite: 172-178]."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. Para Platão, a alma possui três partes e é o conflito interno entre a razão (que deve guiar), a emoção (irascível) e os instintos (apetitiva) que explica as decisões e ações humanas [cite: 173-178]."
+  },
+  {
+    "id": 80,
+    "tipo": "assercao_razao",
+    "enunciado": "A divergência entre James Mill e John Stuart Mill marca a evolução da teoria da associação [cite: 399-402]. Avalie as asserções a respeito de John Stuart Mill:\n\nI. John Stuart Mill desenvolveu o conceito de 'Síntese Criativa', opondo-se à visão estritamente mecânica da mente [cite: 401-402].\nPORQUE\nII. Ele acreditava que as ideias combinadas na mente poderiam gerar algo inteiramente novo e com propriedades diferentes da mera soma de suas partes [cite: 401-402].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. A Síntese Criativa (I) é justificada exatamente pela premissa da 'química mental' de John S. Mill (II), onde a associação de ideias cria um novo produto qualitativamente diferente da simples soma das partes isoladas (diferindo da visão da 'máquina' do pai, James Mill) [cite: 401-402]."
+  },
+  {
+    "id": 81,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "O mecanicismo não foi apenas uma metáfora, mas uma doutrina com diretrizes claras [cite: 290-295]. Sobre as diretrizes principais do mecanicismo aplicadas às nascentes ciências do corpo e da mente, analise:\n\nI. O Reducionismo defende que para compreender o funcionamento do todo (como o comportamento), devemos dividi-lo e analisá-lo em suas partes mais elementares [cite: 311-314].\nII. O Determinismo postula que os fenômenos são aleatórios até que a consciência do indivíduo decida o curso da ação [cite: 307-309].\nIII. O mecanicismo propôs que o universo e o corpo funcionam de maneira previsível e explicável por princípios físicos [cite: 292-295].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I, apenas.",
+      "B) I e III, apenas.",
+      "C) II e III, apenas.",
+      "D) I e II, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. As afirmativas I (reducionismo) e III (visão do relógio/física) estão corretas [cite: 292-295, 311-314]. A afirmativa II é falsa porque o determinismo não admite aleatoriedade; ele postula que todo evento tem uma causa fixa e identificável [cite: 307-309]."
+  },
+  {
+    "id": 82,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "O cérebro animal foi o foco de pesquisadores interessados em mapear funções neurais no século XIX. O método que consistia em remover áreas cerebrais específicas em animais vivos para observar a perda comportamental era denominado:",
+    "alternativas": [
+      "A) Método Clínico [cite: 502-504].",
+      "B) Estimulação Galvânica [cite: 517-521].",
+      "C) Extirpação [cite: 502-503].",
+      "D) Frenologia [cite: 513-516].",
+      "E) Síntese Criativa [cite: 401-402]."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A técnica de remover ou destruir parte do cérebro de um animal vivo para observar mudanças no comportamento é a Extirpação [cite: 502-503]."
+  },
+  {
+    "id": 83,
+    "tipo": "assercao_razao",
+    "enunciado": "O século XIX vivenciou a proliferação do Materialismo, um desdobramento das influências fisiológicas na ciência [cite: 373-377]. Analise as asserções:\n\nI. O materialismo defendeu a separação rigorosa entre uma mente espiritual imaterial e um corpo puramente mecânico [cite: 373-377].\nPORQUE\nII. Segundo os teóricos materialistas, os processos mentais são unicamente o produto da atividade física e anatômica do cérebro [cite: 373-377].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. A asserção I é falsa porque o materialismo REJEITAVA a separação (dualismo) entre a mente imaterial e o corpo material. A asserção II é verdadeira e descreve corretamente o núcleo do pensamento materialista [cite: 373-377]."
+  },
+  {
+    "id": 84,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "Os experimentos com eletricidade no final do século XVIII moldaram a compreensão de como o corpo se comunica internamente [cite: 517-522]. Sobre os pioneiros dessa área, analise as afirmativas:\n\nI. Luigi Galvani demonstrou que a eletricidade era a força motriz por trás das contrações musculares.\nII. Giovanni Aldini realizou demonstrações espetaculares de eletricidade em corpos humanos.\nIII. Esses achados elétricos desbancaram de vez a crença nas antigas premissas de fluidos ou espíritos animais transitando por tubos nervosos.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I, apenas.",
+      "B) I e II, apenas.",
+      "C) II e III, apenas.",
+      "D) I e III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 4,
+    "explicacao": "Correta: E. Todas as alternativas estão corretas. Galvani e Aldini popularizaram a eletricidade animal (I e II), fato que pavimentou o caminho para abandonar antigas teorias não-científicas (como a teoria dos tubos de Descartes) (III) [cite: 517-522]."
+  },
+  {
+    "id": 85,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "A transição intelectual ocorrida na Grécia Antiga estabeleceu a psicologia como um campo reflexivo. Sócrates inaugurou métodos perenes. Qual foi sua principal técnica?",
+    "alternativas": [
+      "A) A observação naturalística de animais selvagens [cite: 157-161].",
+      "B) O uso da extirpação para mapear emoções [cite: 157-161].",
+      "C) O emprego do método dialético para promover a introspecção e o autoconhecimento [cite: 157-161].",
+      "D) A formulação de equações psicofísicas para medir o estado da alma [cite: 157-161].",
+      "E) O mapeamento das quatro biles corporais nos templos de Asclépio [cite: 157-161]."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. O método socrático envolvia a dialética e a introspecção profunda, visando o autoconhecimento como via para compreender as virtudes e o comportamento [cite: 157-161]."
+  },
+  {
+    "id": 86,
+    "tipo": "assercao_razao",
+    "enunciado": "A fisiologia avançou imensamente com Johannes Müller na década de 1830 [cite: 488-490]. Sobre o seu legado e a Teoria da Energia Específica dos Nervos, analise:\n\nI. Müller propôs que o estímulo a um nervo específico sempre provocará uma sensação específica, não importando a natureza física desse estímulo [cite: 489-490].\nPORQUE\nII. Ele demonstrou que a eletricidade do corpo humano é produzida exclusivamente na glândula pineal e enviada ao cérebro [cite: 489-490].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A asserção I é verdadeira e define corretamente a Teoria da Energia Específica dos Nervos de Müller [cite: 489-490]. A asserção II é completamente falsa, misturando fisiologia moderna com a teoria obsoleta da glândula pineal (Descartes)."
+  },
+  {
+    "id": 87,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A frenologia, apesar de refutada posteriormente, carregou uma intenção que impulsionou o debate cerebral no século XIX [cite: 513-516]. Sobre seus fundadores e teses, avalie:\n\nI. Acreditava-se que saliências no crânio representavam o superdesenvolvimento de certas habilidades mentais ou emocionais.\nII. Franz Josef Gall foi um de seus grandes expoentes, após observar correlações entre o tamanho da testa e a memória de colegas.\nIII. A frenologia se opôs veementemente à localização de funções, defendendo que o cérebro trabalhava como uma esponja uniforme.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I, apenas.",
+      "B) I e II, apenas.",
+      "C) II e III, apenas.",
+      "D) I e III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. As afirmações I e II resumem perfeitamente os princípios e a origem das observações de Franz Josef Gall na formulação da Frenologia [cite: 513-516]. A III é falsa porque a frenologia defendia extrema localização das faculdades mentais, e não um cérebro uniforme."
+  },
+  {
+    "id": 88,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "A ciência da Psicofísica foi estruturada metodologicamente para lidar com a interação mente-corpo. Como Gustav Fechner dividiu a sua abordagem investigativa dentro desse campo?",
+    "alternativas": [
+      "A) Em psicanálise clínica e psicologia associacionista [cite: 751-753].",
+      "B) Em psicofísica materialista e psicofísica empirista [cite: 751-753].",
+      "C) Em psicofísica externa (estímulos ambientais vs sensação) e interna (processos fisiológicos vs sensação) [cite: 751-753].",
+      "D) Em observação dialética e extirpação animal [cite: 751-753].",
+      "E) Em Frenologia superior e inferior [cite: 751-753]."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A psicofísica desenvolvida por Fechner foi estruturada em duas partes: a Externa (que correlaciona mundo físico ao mental) e a Interna (que correlaciona o processo neurofisiológico ao mental) [cite: 751-753]."
+  },
+  {
+    "id": 89,
+    "tipo": "assercao_razao",
+    "enunciado": "A revolução metodológica promovida pelo modelo universitário alemão propiciou um terreno fértil inédito [cite: 539-546]. Avalie as asserções sobre a ascensão da Alemanha como centro acadêmico:\n\nI. A Alemanha destacou-se no cenário acadêmico por garantir liberdade de pesquisa aos professores e integrar filosofia e as ciências empíricas [cite: 541-545].\nPORQUE\nII. Havia uma determinação estatal rigorosa que proibia cientistas alemães de investigarem processos fisiológicos sob uma perspectiva materialista [cite: 539-546].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A asserção I é verdadeira [cite: 541-545]. A asserção II é inteiramente falsa; o que favoreceu o desenvolvimento alemão foi a ausência de amarras dogmáticas rigorosas, permitindo o florescimento da fisiologia experimental e abordagens materialistas."
+  },
+  {
+    "id": 90,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "Aristóteles e Platão propuseram modelos fundadores para o entendimento da mente. A respeito de suas visões, analise as proposições:\n\nI. Platão acreditava que a razão deveria controlar e subjugar os apetites e a dimensão irascível para atingir o equilíbrio [cite: 172-186].\nII. Aristóteles, adotando o empirismo rudimentar, propôs que as ideias não fluem ao acaso, mas se agrupam seguindo as leis da semelhança, contraste e contiguidade [cite: 192-206].\nIII. Ambos os pensadores rejeitavam qualquer influência do corpo físico sobre os estados emocionais da alma.\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. A afirmativa I descreve o controle racional da alma tripartite de Platão [cite: 182-183]. A afirmativa II descreve o pensamento associativo (empírico) de Aristóteles [cite: 204-206]. A III é falsa porque o próprio Aristóteles (no De Anima) ligou a alma diretamente às funções vitais e ao corpo[cite: 194]."
+  },
+  {
+    "id": 91,
+    "tipo": "assercao_razao",
+    "enunciado": "A 'Ruptura Naturalista' foi o passo inaugural que separou as explicações baseadas em deuses do estudo racional da saúde humana [cite: 94-96]. Avalie as asserções a respeito desse marco na Grécia Antiga:\n\nI. A partir do século VI a.C., os médicos gregos começaram a tratar o comportamento e as doenças como fenômenos naturais, resultados de processos físicos e ambientais [cite: 95-96].\nPORQUE\nII. Eles rejeitaram definitivamente as explicações sobrenaturais que antes eram atribuídas exclusivamente à ação divina pelos sacerdotes dos templos [cite: 86-87, 95-96].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. Ambas as afirmativas estão corretas. A transição para causas físicas e ambientais (I) ocorreu precisamente porque houve uma rejeição consciente das antigas explicações místicas e sobrenaturais (II), marcando a ruptura naturalista [cite: 94-97]."
+  },
+  {
+    "id": 92,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "A Frenologia alcançou imensa popularidade antes de ser descartada cientificamente. Sobre as premissas formuladas por Franz Josef Gall [cite: 513-516], analise as afirmativas:\n\nI. A frenologia defendia que o formato externo do crânio poderia revelar o grau de desenvolvimento das faculdades mentais de um indivíduo [cite: 513-516].\nII. Segundo Gall, um 'afundamento' no crânio representaria uma capacidade inferior em determinada característica intelectual ou emocional [cite: 513-516].\nIII. A teoria frenológica foi a primeira a utilizar a estimulação elétrica in vivo para comprovar o centro da fala [cite: 513-516].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. As afirmativas I e II descrevem os fundamentos da frenologia (avaliar saliências e depressões no crânio) [cite: 513-516]. A III é falsa, pois quem mapeou o centro da fala (área de Broca) foi Paul Broca usando o método clínico (autópsia), não a estimulação elétrica, e isso não fez parte da frenologia [cite: 507-511]."
+  },
+  {
+    "id": 93,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "A visão mecanicista transbordou da física para a biologia no século XVII [cite: 288-295]. Qual conceito formulado por René Descartes aplicou perfeitamente as leis da mecânica e da física para explicar o comportamento involuntário dos organismos?",
+    "alternativas": [
+      "A) A Tábula Rasa [cite: 324-325].",
+      "B) A Síntese Criativa [cite: 401-402].",
+      "C) A Teoria do Ato Reflexo [cite: 338-341].",
+      "D) O Reducionismo Epistemológico [cite: 311-314].",
+      "E) A Lei da Diferença Mínima Perceptível [cite: 647-649]."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A Teoria do Ato Reflexo foi a forma como Descartes explicou respostas automáticas a objetos externos, tratando o corpo material como uma máquina que reage mecanicamente a estímulos, sem necessidade do pensamento [cite: 338-341]."
+  },
+  {
+    "id": 94,
+    "tipo": "assercao_razao",
+    "enunciado": "O Positivismo de Auguste Comte delimitou rigorosamente as fronteiras do trabalho científico [cite: 354-360]. Analise as asserções:\n\nI. O Positivismo ditou que a nova psicologia deveria priorizar o estudo de entidades metafísicas e invisíveis para compreender a verdadeira natureza humana [cite: 356-364].\nPORQUE\nII. Segundo Comte, o conhecimento científico exigia foco exclusivo na mensuração rigorosa e na observação objetiva [cite: 356-360].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. A asserção I é totalmente falsa, pois o positivismo rejeitava a metafísica[cite: 363]. A asserção II é verdadeira, descrevendo o critério central de Comte para a ciência: observação e mensuração de fatos verificáveis [cite: 356, 359-364]."
+  },
+  {
+    "id": 95,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "Ernst Weber foi pioneiro na percepção quantitativa [cite: 616-621]. Um de seus grandes legados foi a Lei da Diferença Mínima Perceptível (JND) [cite: 647-650]. Sobre a aplicação e significado do JND, avalie:\n\nI. O JND define a menor diferença detectável entre dois estímulos físicos por um observador[cite: 648].\nII. Foi um passo crucial para a psicofísica, pois provou que há uma relação quantitativa entre estímulos sensoriais e a percepção humana [cite: 648-650].\nIII. Weber demonstrou que as sensações humanas respondem de forma linear e absoluta a estímulos físicos infinitos [cite: 648-650].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I, apenas.",
+      "B) I e II, apenas.",
+      "C) II e III, apenas.",
+      "D) I e III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 1,
+    "explicacao": "Correta: B. A afirmação I define perfeitamente o JND [cite: 648], e a II aponta sua importância histórica para a quantificação [cite: 648-650]. A III é falsa porque a lei foca nas 'diferenças detectáveis' ou relativas, demonstrando que não há uma correspondência física absoluta perfeita de um para um."
+  },
+  {
+    "id": 96,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "O Empirismo, formulado por pensadores como John Locke, opunha-se à tradição racionalista e medieval [cite: 324-332]. Um de seus preceitos práticos era a 'rejeição de dogmas'[cite: 331]. Na construção do conhecimento científico, isso exigia que:",
+    "alternativas": [
+      "A) O conhecimento fosse validado unicamente pelas autoridades clássicas e pelas deduções de Aristóteles [cite: 326-333].",
+      "B) As ideias inatas fossem a fonte primária da verdade, independentemente do que os sentidos indicassem [cite: 326-333].",
+      "C) Houvesse um rompimento com antigas tradições, e a verdade fosse verificada mediante experiência e observação direta no mundo real [cite: 331-332].",
+      "D) O conhecimento empírico fosse validado por reflexões matemáticas independentes de observadores físicos [cite: 326-333].",
+      "E) As faculdades mentais fossem estudadas unicamente pelo método clínico pós-morte [cite: 326-333]."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. A rejeição de dogmas no empirismo marcou o rompimento com autoridades antigas, estabelecendo que a validade de uma teoria dependia da verificação direta através da observação e experiência sensorial do indivíduo [cite: 331-332]."
+  },
+  {
+    "id": 97,
+    "tipo": "assercao_razao",
+    "enunciado": "No século XIX, três métodos principais nortearam o estudo cerebral: a extirpação, o método clínico e os estímulos elétricos [cite: 502-505]. Avalie as asserções a respeito de suas aplicações:\n\nI. Paul Broca revolucionou o mapeamento cerebral ao utilizar o método clínico para identificar a área responsável pela articulação da fala no cérebro esquerdo [cite: 507-511].\nPORQUE\nII. O método clínico permitia examinar, pós-morte, as estruturas cerebrais para correlacionar eventuais lesões físicas com comportamentos anormais observados enquanto o paciente estava vivo[cite: 504].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. Broca de fato utilizou o método clínico para sua descoberta (I) [cite: 507-511], e isso foi possível justamente porque esse método permite analisar o cérebro pós-morte e parear as lesões visíveis com os dados comportamentais registrados antes do óbito do indivíduo (II)[cite: 504]."
+  },
+  {
+    "id": 98,
+    "tipo": "multipla_escolha_complexa",
+    "enunciado": "O mecanicismo introduziu novas formas de pensar metodologicamente a ciência, destacando-se o 'Reducionismo' [cite: 311-314]. Sobre a aplicação dessa diretriz no nascimento da psicologia científica, analise:\n\nI. O reducionismo pregava que fenômenos complexos, como o comportamento, deveriam ser divididos e estudados em suas partes constituintes [cite: 311-314].\nII. Essa abordagem preparou o terreno para o laboratório psicológico, ao sugerir que se o Universo pode ser dividido em partes, o corpo e os nervos também podem [cite: 315-317].\nIII. O reducionismo exigia a utilização da síntese criativa, impedindo a fragmentação empírica da mente humana [cite: 311-317].\n\nÉ correto o que se afirma em:",
+    "alternativas": [
+      "A) I e II, apenas.",
+      "B) II e III, apenas.",
+      "C) I e III, apenas.",
+      "D) III, apenas.",
+      "E) I, II e III."
+    ],
+    "resposta_correta": 0,
+    "explicacao": "Correta: A. As afirmativas I e II definem corretamente o conceito de reducionismo e sua justificativa como método analítico para a futura psicologia laboratorial [cite: 311-317]. A III é incorreta, pois a 'síntese criativa' (associacionismo de John Stuart Mill) foca na junção qualitativa de ideias e não no fracionamento anatômico reducionista."
+  },
+  {
+    "id": 99,
+    "tipo": "multipla_escolha_direta",
+    "enunciado": "O debate sobre o associacionismo evidencia a evolução teórica sobre como aprendemos. James Mill comparava a mente a um relógio passivo [cite: 399-400]. Qual foi a inovação trazida por John Stuart Mill para reformular a tese paterna?",
+    "alternativas": [
+      "A) Defendeu que as ideias complexas resultam apenas de forças sobrenaturais intervenientes [cite: 399-402].",
+      "B) Sustentou que a mente não associa ideias, mas recebe blocos inteiros de conhecimento inato ao nascer [cite: 399-402].",
+      "C) Sugeriu a 'Síntese Criativa', afirmando que a combinação de ideias pode gerar algo novo e totalmente diferente da simples soma matemática de suas partes [cite: 401-402].",
+      "D) Argumentou que o cérebro apenas reflete a percepção material, retomando a máxima de Berkeley [cite: 399-402].",
+      "E) Promoveu o inatismo radical através de experimentos fisiológicos de extirpação [cite: 399-402]."
+    ],
+    "resposta_correta": 2,
+    "explicacao": "Correta: C. Diferente do modelo mecanicista puramente aditivo de seu pai, John Stuart Mill inovou com a 'Síntese Criativa' (análoga a uma reação química), onde as ideias interagem e produzem qualidades novas, distintas de suas partes originais [cite: 401-402]."
+  },
+  {
+    "id": 100,
+    "tipo": "assercao_razao",
+    "enunciado": "A formalização da psicologia no século XIX foi o ápice de uma série de revoluções paradigmáticas. A respeito da transição definitiva da filosofia para a psicologia científica experimental [cite: 278-289, 469-470], avalie as proposições finais:\n\nI. A adoção irrestrita da especulação metafísica nas universidades da Alemanha foi o estopim que consolidou a psicofísica de Fechner e Weber [cite: 539-546].\nPORQUE\nII. O 'Zeitgeist' científico da época demandava o uso de equipamentos de medição precisos, baseados nos princípios do mecanicismo, empirismo e positivismo, para quantificar fenômenos antes vistos como intangíveis [cite: 482-483, 290-305].",
+    "alternativas": [
+      "A) As asserções I e II são proposições verdadeiras, e a II é uma justificativa correta da I.",
+      "B) As asserções I e II são proposições verdadeiras, mas a II não é uma justificativa correta da I.",
+      "C) A asserção I é uma proposição verdadeira, e a II é uma proposição falsa.",
+      "D) A asserção I é uma proposição falsa, e a II é uma proposição verdadeira.",
+      "E) As asserções I e II são proposições falsas."
+    ],
+    "resposta_correta": 3,
+    "explicacao": "Correta: D. A asserção I é falsa, pois a transição dependeu justamente da REJEIÇÃO (ou superação) da especulação puramente metafísica em favor da fisiologia. A asserção II é verdadeira e resume perfeitamente o 'espírito do tempo' que possibilitou a fundação da psicologia: a união do mecanicismo com a precisão experimental [cite: 482-483, 290-305]."
+  },
+        
+    ];
+    // ==========================================
+
+    let currentIndex = 0;
+    let progresso = JSON.parse(localStorage.getItem('simulado_psicologia_v2')) || {
+        respostas: {}, // Guarda { idDaQuestao: alternativaEscolhida }
+        acertos: 0,
+        erros: 0
+    };
+
+    function initQuiz() {
+        if(questoes.length === 0) {
+            document.getElementById("enunciado-text").innerText = "As questões não foram encontradas. Verifique a variável 'questoes' no código fonte!";
+            document.getElementById("submit-btn").style.display = "none";
+            return;
+        }
+        document.getElementById("total-questions").innerText = questoes.length;
+        gerarGridNavegacao();
+        atualizarEstatisticas();
+        carregarQuestao();
+    }
+
+    function salvarProgresso() {
+        localStorage.setItem('simulado_psicologia_v2', JSON.stringify(progresso));
+        atualizarEstatisticas();
+        gerarGridNavegacao();
+    }
+
+    function atualizarEstatisticas() {
+        document.getElementById("score-correct").innerText = progresso.acertos;
+        document.getElementById("score-incorrect").innerText = progresso.erros;
+        let totalRespondidas = progresso.acertos + progresso.erros;
+        let percent = totalRespondidas === 0 ? 0 : Math.round((progresso.acertos / totalRespondidas) * 100);
+        document.getElementById("score-percent").innerText = percent;
+    }
+
+    function gerarGridNavegacao() {
+        const grid = document.getElementById("grid-area");
+        grid.innerHTML = "";
+        questoes.forEach((q, index) => {
+            const btn = document.createElement("button");
+            btn.className = "grid-btn";
+            btn.innerText = index + 1;
+            btn.onclick = () => irParaQuestao(index);
+            
+            if (index === currentIndex) btn.classList.add("current");
+            
+            if (progresso.respostas[q.id] !== undefined) {
+                if (progresso.respostas[q.id] === q.resposta_correta) {
+                    btn.classList.add("answered-correct");
+                } else {
+                    btn.classList.add("answered-incorrect");
+                }
+            }
+            grid.appendChild(btn);
+        });
+    }
+
+    function irParaQuestao(index) {
+        currentIndex = index;
+        carregarQuestao();
+        gerarGridNavegacao();
+    }
+
+    function navegar(direcao) {
+        let novoIndex = currentIndex + direcao;
+        if (novoIndex >= 0 && novoIndex < questoes.length) {
+            irParaQuestao(novoIndex);
+        }
+    }
+
+    function carregarQuestao() {
+        const questao = questoes[currentIndex];
+        document.getElementById("current-question-num").innerText = currentIndex + 1;
+        document.getElementById("enunciado-text").innerText = questao.enunciado;
+        
+        const assercoesArea = document.getElementById("assercoes-area");
+        if(questao.assercoes && questao.assercoes.length > 0) {
+            assercoesArea.style.display = "block";
+            assercoesArea.innerHTML = questao.assercoes.join("<br><br>");
+        } else {
+            assercoesArea.style.display = "none";
+        }
+
+        const optionsArea = document.getElementById("options-area");
+        optionsArea.innerHTML = ""; 
+        
+        const jaRespondida = progresso.respostas[questao.id] !== undefined;
+        const respostaDada = progresso.respostas[questao.id];
+
+        questao.alternativas.forEach((alt, index) => {
+            const label = document.createElement("label");
+            label.className = "option-label";
+            if (jaRespondida) {
+                if (index === questao.resposta_correta) label.classList.add("correct");
+                else if (index === respostaDada) label.classList.add("incorrect");
+            }
+            
+            const checked = (jaRespondida && respostaDada === index) ? "checked" : "";
+            const disabled = jaRespondida ? "disabled" : "";
+            
+            label.innerHTML = `<input type="radio" name="opcao" value="${index}" ${checked} ${disabled}> ${alt}`;
+            optionsArea.appendChild(label);
+        });
+
+        // Controles de Botões
+        document.getElementById("prev-btn").disabled = (currentIndex === 0);
+        document.getElementById("next-btn").disabled = (currentIndex === questoes.length - 1);
+        
+        const submitBtn = document.getElementById("submit-btn");
+        
+        if (jaRespondida) {
+            submitBtn.style.display = "none";
+            mostrarFeedback(questao, respostaDada);
+        } else {
+            submitBtn.style.display = "block";
+            submitBtn.disabled = false;
+            document.getElementById("feedback-area").style.display = "none";
+        }
+    }
+
+    function verificarResposta() {
+        const opcoes = document.getElementsByName("opcao");
+        let selecionada = -1;
+        for (let i = 0; i < opcoes.length; i++) {
+            if (opcoes[i].checked) { selecionada = parseInt(opcoes[i].value); break; }
+        }
+
+        if (selecionada === -1) {
+            alert("Selecione uma alternativa antes de responder!");
+            return;
+        }
+
+        const questao = questoes[currentIndex];
+        progresso.respostas[questao.id] = selecionada;
+
+        if (selecionada === questao.resposta_correta) { progresso.acertos++; } 
+        else { progresso.erros++; }
+
+        salvarProgresso();
+        carregarQuestao(); 
+    }
+
+    function mostrarFeedback(questao, respostaDada) {
+        const feedbackArea = document.getElementById("feedback-area");
+        const feedbackTitle = document.getElementById("feedback-title");
+        const feedbackExp = document.getElementById("feedback-explanation");
+
+        feedbackArea.className = "feedback"; 
+        if (respostaDada === questao.resposta_correta) {
+            feedbackArea.classList.add("correct-box");
+            feedbackTitle.innerText = "Mandou bem! Resposta Correta.";
+        } else {
+            feedbackArea.classList.add("incorrect-box");
+            feedbackTitle.innerText = "Ops! Resposta Incorreta.";
+        }
+
+        feedbackExp.innerHTML = questao.explicacao;
+        feedbackArea.style.display = "block";
+    }
+
+    function zerarSimulado() {
+        if(confirm("Tem certeza que deseja apagar todo o seu progresso? Isso não pode ser desfeito.")) {
+            localStorage.removeItem('simulado_psicologia_v2');
+            progresso = { respostas: {}, acertos: 0, erros: 0 };
+            irParaQuestao(0);
+            atualizarEstatisticas();
+        }
+    }
+
+    window.onload = initQuiz;
+</script>
+
+</body>
+</html>
