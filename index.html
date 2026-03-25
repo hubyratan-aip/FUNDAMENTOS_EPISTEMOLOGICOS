@@ -48,47 +48,86 @@
         .reset-btn:hover { background: #c0392b; }
 
         /* --- Ajustes de Responsividade para Celulares --- */
+        /* --- Ajustes de Responsividade para Celulares (Revisado) --- */
         @media (max-width: 600px) {
             body { 
                 padding: 10px; 
             }
             .container { 
-                padding: 20px 15px; 
+                padding: 15px; 
             }
+            
+            /* Organiza o painel em uma grade de 2 colunas, alinhado à esquerda */
             .stats-panel { 
-                flex-direction: column; 
-                align-items: center; 
-                text-align: center;
-                gap: 8px; 
+                display: grid;
+                grid-template-columns: 1fr 1fr; 
+                gap: 8px;
                 padding: 15px;
+                margin-bottom: 20px;
+                text-align: left; /* Remove a centralização */
             }
             .stats-panel span { 
-                font-size: 1em; 
+                font-size: 0.9em; /* Fonte menor nas estatísticas */
             }
+
+            /* Redução geral do tamanho das fontes */
+            .question-header { 
+                font-size: 1.1em; 
+                margin-bottom: 15px;
+            }
+            .enunciado { 
+                font-size: 0.95em; 
+            }
+            .assercoes-box {
+                padding: 12px 15px;
+                font-size: 0.9em;
+                margin-bottom: 20px;
+            }
+            
+            /* Ajuste das alternativas (caixas mais compactas) */
+            .option-label { 
+                padding: 12px; 
+                margin-bottom: 10px;
+                font-size: 0.95em;
+            }
+            input[type="radio"] { 
+                transform: scale(1.1); /* Reduz a "bolinha" do rádio */
+                margin-right: 8px;
+            }
+            
+            /* Organização dos botões: Confirmar ocupa a linha toda, Voltar/Avançar dividem a linha */
             .nav-buttons { 
-                flex-direction: column; /* Empilha os botões verticalmente */
+                display: flex;
+                flex-wrap: wrap; 
                 gap: 10px; 
             }
             .btn { 
-                width: 100%; 
                 padding: 12px; 
-                font-size: 1em; 
+                font-size: 0.95em; 
             }
-            .option-label { 
-                padding: 12px 10px; 
+            #submit-btn {
+                flex: 1 1 100%; /* Ocupa 100% da largura */
+                order: -1; /* Faz o botão confirmar aparecer acima do Voltar/Avançar */
             }
-            .question-header { 
-                font-size: 1.1em; 
+            #prev-btn, #next-btn {
+                flex: 1 1 45%; /* Ocupam metade da tela cada */
             }
-            .enunciado { 
-                font-size: 1em; 
+
+            /* Feedback de acerto/erro mais compacto */
+            .feedback {
+                padding: 15px;
+                font-size: 0.95em;
             }
+
+            /* Grade de questões alinhada à esquerda e menor */
             .question-grid {
-                justify-content: center; /* Centraliza a grade de questões */
+                justify-content: flex-start; 
+                gap: 6px;
             }
             .grid-btn {
-                width: 35px; /* Diminui levemente os botões da grade para caberem mais na tela */
-                height: 35px;
+                width: 32px; 
+                height: 32px;
+                font-size: 0.85em;
             }
         }
     </style>
